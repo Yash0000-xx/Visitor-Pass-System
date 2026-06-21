@@ -24,7 +24,8 @@ const visitorSchema = new mongoose.Schema({
     hostId: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'User' 
-    }
+    },
+    status: { type: String, enum: ['Pending', 'Approved', 'Rejected'], default: 'Pending' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Visitor', visitorSchema);
