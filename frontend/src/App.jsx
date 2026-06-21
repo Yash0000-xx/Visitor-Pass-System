@@ -17,6 +17,7 @@ function App() {
             <Link to="/" style={{ color: 'white', textDecoration: 'none' }}>Login</Link>
             <Link to="/register-visitor" style={{ color: 'white', textDecoration: 'none' }}>Register</Link>
             <Link to="/dashboard" style={{ color: 'white', textDecoration: 'none' }}>Dashboard</Link>
+            <Link to="/admin-register" style={{ color: 'white', textDecoration: 'none' }}>Admin Register</Link>
             {/* Added the final link */}
             <Link to="/issue-pass" style={{ color: '#00d2d3', textDecoration: 'none' }}>Issue Pass</Link> 
           </div>
@@ -29,6 +30,7 @@ function App() {
             <Route path="/register-visitor" element={<RegisterVisitor />} />
             <Route path="/dashboard" element={<Dashboard />} />
             {/* 2. Connect the route */}
+            <Route path="/admin-register" element={<AdminRegister />} />
             <Route path="/issue-pass" element={<IssuePass />} />
           </Routes>
         </div>
