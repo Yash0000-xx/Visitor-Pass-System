@@ -25,7 +25,7 @@ function RegisterVisitor() {
     setMessage('');
 
     try {
-      const response = await axios.post('http://localhost:5000/api/visitors/register', formData);
+      const response = await axios.post('https://visitor-pass-backend-qhoo.onrender.com/api/visitors/register', formData);
       setMessage(response.data.message);
       
       // Clear the form after success

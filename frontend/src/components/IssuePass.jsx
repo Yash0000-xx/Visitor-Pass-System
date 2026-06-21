@@ -13,7 +13,7 @@ function IssuePass() {
   useEffect(() => {
     const fetchVisitors = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/visitors');
+        const response = await axios.get('https://visitor-pass-backend-qhoo.onrender.com/api/visitors');
         setVisitors(response.data);
       } catch (error) {
         console.error('Failed to fetch visitors');
@@ -35,7 +35,7 @@ function IssuePass() {
 
     try {
       // 1. Request an Appointment for the selected visitor
-      const apptRes = await axios.post('http://localhost:5000/api/appointments/request', {
+      const apptRes = await axios.post('https://visitor-pass-backend-qhoo.onrender.com/api/appointments/request', {
         visitorId: selectedVisitor,
         hostId: '64c1234567890abcdef12345', // Dummy Employee ID to keep the demo fast
         date: new Date(),
@@ -44,12 +44,12 @@ function IssuePass() {
       const apptId = apptRes.data.appointment._id;
 
       // 2. Automatically Approve the Appointment
-      await axios.put(`http://localhost:5000/api/appointments/status/${apptId}`, { 
+      await axios.put(`https://visitor-pass-backend-qhoo.onrender.com/api/appointments/status/${apptId}`, { 
         status: 'Approved' 
       });
 
       // 3. Generate the actual QR Code Pass
-      const passRes = await axios.post(`http://localhost:5000/api/passes/generate/${apptId}`);
+      const passRes = await axios.post(`https://visitor-pass-backend-qhoo.onrender.com/api/passes/generate/${apptId}`);
       
       // Save the generated image to display it
       setQrCode(passRes.data.pass.qrCodeData);

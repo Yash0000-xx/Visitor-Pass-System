@@ -13,7 +13,7 @@ function Dashboard() {
     const fetchVisitors = async () => {
       try {
         // Ask the backend for the list of all visitors
-        const response = await axios.get('http://localhost:5000/api/visitors');
+        const response = await axios.get('https://visitor-pass-backend-qhoo.onrender.com/api/visitors');
         setVisitors(response.data);
         setLoading(false);
       } catch (err) {
