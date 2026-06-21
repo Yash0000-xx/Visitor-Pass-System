@@ -4,7 +4,7 @@ const Visitor = require('../models/Visitor');
 const User = require('../models/User');
 const { verifyToken, checkRole } = require('../middleware/auth');
 const upload = require('../middleware/upload');
-
+const sendSMS = require('../utils/sendSMS');
 router.post('/register', upload.single('photo'), async (req, res) => {
     try {
         const { name, email, phone, purposeOfVisit, hostId } = req.body;
@@ -77,6 +77,13 @@ router.put('/:id/status', verifyToken, checkRole(['Employee', 'Admin']), async (
             { status }, 
             { new: true }
         );
+
+     
+        if (status === 'Approved' && visitor.phone) {
+            const message = `Hello ${visitor.name}, your visit has been approved! Show your ID at the front desk.`;
+            await sendSMS(visitor.phone, message);
+        }
+
         res.json({ message: `Pass ${status.toLowerCase()}!`, visitor });
     } catch (error) {
         res.status(500).json({ message: 'Error updating status' });
