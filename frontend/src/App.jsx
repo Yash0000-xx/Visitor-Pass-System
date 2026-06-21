@@ -4,7 +4,7 @@ import Login from './components/Login';
 import RegisterVisitor from './components/RegisterVisitor';
 import Dashboard from './components/Dashboard';
 import IssuePass from './components/IssuePass'; // <-- 1. Import the final component
-
+import AdminRegister from './components/AdminRegister';
 function App() {
   return (
     <Router>
