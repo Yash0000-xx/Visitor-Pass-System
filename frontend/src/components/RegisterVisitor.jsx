@@ -9,7 +9,7 @@ function RegisterVisitor() {
     email: '',
     phone: '',
     purposeOfVisit: '',
-    hostId: '64b... (We will link real Employees later)' // Placeholder for now
+    hostId: '64c1234567890abcdef12345' // Placeholder for now
   });
   
   const [message, setMessage] = useState('');
