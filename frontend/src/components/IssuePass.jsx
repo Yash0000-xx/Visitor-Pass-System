@@ -1,19 +1,23 @@
 // frontend/src/components/IssuePass.jsx
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import jsPDF from 'jspdf'; // <-- IMPORT THE NEW PDF LIBRARY
 
 function IssuePass() {
   const [visitors, setVisitors] = useState([]);
-  const [selectedVisitor, setSelectedVisitor] = useState('');
+  const [selectedVisitorId, setSelectedVisitorId] = useState('');
   const [qrCode, setQrCode] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Load the list of visitors from the database when the page opens
   useEffect(() => {
     const fetchVisitors = async () => {
       try {
-        const response = await axios.get('https://visitor-pass-backend-qhoo.onrender.com/api/visitors');
+        // Fetch visitors using the auth token we set up earlier
+        const token = localStorage.getItem('token');
+        const response = await axios.get('https://visitor-pass-backend-qhoo.onrender.com/api/visitors', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
         setVisitors(response.data);
       } catch (error) {
         console.error('Failed to fetch visitors');
@@ -22,9 +26,8 @@ function IssuePass() {
     fetchVisitors();
   }, []);
 
-  // The master function that runs the API chain
   const handleGeneratePass = async () => {
-    if (!selectedVisitor) {
+    if (!selectedVisitorId) {
       setMessage('Please select a visitor first.');
       return;
     }
@@ -34,42 +37,79 @@ function IssuePass() {
     setMessage('Processing appointment and generating secure QR code...');
 
     try {
-      // 1. Request an Appointment for the selected visitor
+      // 1. Request Appointment
       const apptRes = await axios.post('https://visitor-pass-backend-qhoo.onrender.com/api/appointments/request', {
-        visitorId: selectedVisitor,
-        hostId: '64c1234567890abcdef12345', // Dummy Employee ID to keep the demo fast
+        visitorId: selectedVisitorId,
+        hostId: '64c1234567890abcdef12345', // Dummy Employee ID
         date: new Date(),
         time: '10:00 AM'
       });
       const apptId = apptRes.data.appointment._id;
 
-      // 2. Automatically Approve the Appointment
-      await axios.put(`https://visitor-pass-backend-qhoo.onrender.com/api/appointments/status/${apptId}`, { 
-        status: 'Approved' 
-      });
+      // 2. Approve Appointment
+      await axios.put(`https://visitor-pass-backend-qhoo.onrender.com/api/appointments/status/${apptId}`, { status: 'Approved' });
 
-      // 3. Generate the actual QR Code Pass
+      // 3. Generate the Pass
       const passRes = await axios.post(`https://visitor-pass-backend-qhoo.onrender.com/api/passes/generate/${apptId}`);
       
-      // Save the generated image to display it
       setQrCode(passRes.data.pass.qrCodeData);
       setMessage('Pass generated successfully!');
 
     } catch (error) {
-      setMessage('Error generating pass. Please make sure the backend is running.');
+      setMessage('Error generating pass. Are you logged in?');
     }
     setLoading(false);
+  };
+
+  // --- NEW: THE PDF GENERATION LOGIC ---
+  const downloadPDFBadge = () => {
+    // Find the full details of the visitor we selected
+    const visitorDetails = visitors.find(v => v._id === selectedVisitorId);
+    
+    // Create a new blank PDF
+    const doc = new jsPDF();
+
+    // Draw the ID Card background
+    doc.setFillColor(240, 240, 240);
+    doc.rect(50, 40, 110, 150, 'F');
+    doc.setDrawColor(0, 0, 0);
+    doc.rect(50, 40, 110, 150, 'S'); // Add border
+
+    // Add Title Banner
+    doc.setFillColor(44, 62, 80); // Dark blue header
+    doc.rect(50, 40, 110, 25, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(18);
+    doc.text("OFFICIAL VISITOR PASS", 105, 56, { align: "center" });
+
+    // Add Visitor Details
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(14);
+    doc.text(`Name: ${visitorDetails.name}`, 105, 80, { align: "center" });
+    doc.setFontSize(12);
+    doc.text(`Purpose: ${visitorDetails.purposeOfVisit}`, 105, 90, { align: "center" });
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 105, 100, { align: "center" });
+
+    // Add the QR Code Image
+    doc.addImage(qrCode, 'PNG', 75, 110, 60, 60);
+
+    // Add Footer
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Scan at security desk upon entry and exit.", 105, 180, { align: "center" });
+
+    // Download the file to the user's computer
+    doc.save(`${visitorDetails.name.replace(' ', '_')}_Pass.pdf`);
   };
 
   return (
     <div style={{ maxWidth: '600px', margin: '50px auto', padding: '30px', background: 'white', borderRadius: '8px', textAlign: 'center', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}>
       <h2>Issue Digital Pass</h2>
-      <p style={{ color: '#555', marginBottom: '20px' }}>Select a registered visitor to approve their visit and generate a QR Code badge.</p>
 
       <select 
-        onChange={(e) => setSelectedVisitor(e.target.value)} 
-        value={selectedVisitor}
-        style={{ width: '100%', padding: '12px', fontSize: '16px', marginBottom: '20px', borderRadius: '5px', border: '1px solid #ccc' }}
+        onChange={(e) => setSelectedVisitorId(e.target.value)} 
+        value={selectedVisitorId}
+        style={{ width: '100%', padding: '12px', fontSize: '16px', marginBottom: '20px', borderRadius: '5px' }}
       >
         <option value="">-- Select a Visitor --</option>
         {visitors.map((visitor) => (
@@ -87,14 +127,20 @@ function IssuePass() {
         {loading ? 'Generating...' : 'Issue Digital Pass'}
       </button>
 
-      {message && <p style={{ marginTop: '20px', fontWeight: 'bold', color: message.includes('Error') ? 'red' : '#28a745' }}>{message}</p>}
+      {message && <p style={{ marginTop: '20px', fontWeight: 'bold' }}>{message}</p>}
 
-      {/* This is where the magic happens: Displaying the base64 QR Code Image */}
       {qrCode && (
-        <div style={{ marginTop: '30px', padding: '20px', border: '2px dashed #28a745', borderRadius: '10px', background: '#f8f9fa' }}>
-          <h3 style={{ margin: '0 0 15px 0' }}>Official Visitor Badge</h3>
-          <img src={qrCode} alt="Visitor QR Code" style={{ width: '200px', height: '200px', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
-          <p style={{ fontSize: '14px', color: 'gray', marginTop: '15px' }}>Scan at security desk for entry.</p>
+        <div style={{ marginTop: '30px', padding: '20px', border: '2px dashed #28a745', borderRadius: '10px' }}>
+          <h3>Official Visitor Badge</h3>
+          <img src={qrCode} alt="Visitor QR Code" style={{ width: '150px', height: '150px' }} />
+          <br/>
+          {/* NEW: The Download Button */}
+          <button 
+            onClick={downloadPDFBadge}
+            style={{ marginTop: '15px', padding: '10px 20px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+          >
+            Download PDF Badge
+          </button>
         </div>
       )}
     </div>

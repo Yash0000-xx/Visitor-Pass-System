@@ -16,6 +16,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/visitors', require('./routes/visitor'));
 app.use('/api/appointments', require('./routes/appointment'));
 app.use('/api/passes', require('./routes/pass')); // <-- ADD THIS LINE
+app.use('/api/checklog', require('./routes/checklog'));
 app.get('/', (req, res) => {
     res.send('Visitor Pass Management API is running...');
 });

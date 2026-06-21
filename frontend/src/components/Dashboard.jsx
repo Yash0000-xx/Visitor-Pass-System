@@ -3,21 +3,29 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 
 function Dashboard() {
-  // This state holds the list of visitors we get from the database
   const [visitors, setVisitors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // NEW: State variables to hold our filter inputs
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterDate, setFilterDate] = useState('');
 
-  // useEffect runs automatically as soon as the Dashboard loads
   useEffect(() => {
     const fetchVisitors = async () => {
       try {
-        // Ask the backend for the list of all visitors
-        const response = await axios.get('https://visitor-pass-backend-qhoo.onrender.com/api/visitors');
+        // NEW: Grab the digital ID from the browser's storage
+        const token = localStorage.getItem('token');
+        
+        // NEW: Pass the token in the 'headers' so the backend bouncer lets us in
+        const response = await axios.get('https://visitor-pass-backend-qhoo.onrender.com/api/visitors', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
         setVisitors(response.data);
         setLoading(false);
       } catch (err) {
-        setError('Failed to load visitors. Is your backend server running?');
+        setError('Access Denied. Please make sure you are logged in as an Admin/Security.');
         setLoading(false);
       }
     };
@@ -25,16 +33,75 @@ function Dashboard() {
     fetchVisitors();
   }, []);
 
+  // NEW: The Filtering Logic
+  const filteredVisitors = visitors.filter((visitor) => {
+    // 1. Check if the name or purpose matches the search bar
+    const matchesSearch = visitor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          visitor.purposeOfVisit.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    // 2. Check if the date matches the date picker
+    const visitorDate = new Date(visitor.createdAt).toISOString().split('T')[0];
+    const matchesDate = filterDate ? visitorDate === filterDate : true;
+
+    return matchesSearch && matchesDate;
+  });
+
+  // NEW: The CSV Export Logic
+  const handleExportCSV = () => {
+    if (filteredVisitors.length === 0) {
+      alert("No data to export!");
+      return;
+    }
+
+    // Create the column headers for the spreadsheet
+    let csvContent = "Name,Email,Phone,Purpose,Date Registered\n";
+
+    // Loop through the visible rows and format them for CSV
+    filteredVisitors.forEach(v => {
+      const date = new Date(v.createdAt).toLocaleDateString();
+      csvContent += `"${v.name}","${v.email}","${v.phone}","${v.purposeOfVisit}","${date}"\n`;
+    });
+
+    // Create an invisible download link and click it
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", "Visitor_Export.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div style={{ padding: '20px', maxWidth: '1000px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <h2>Admin Dashboard</h2>
-        <button style={{ padding: '10px 15px', background: '#dc3545', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-          Logout
+      </div>
+
+      {/* NEW: Filter Controls & Export Button */}
+      <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
+        <input 
+          type="text" 
+          placeholder="Search name or purpose..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          style={{ padding: '10px', fontSize: '16px', flex: 1, minWidth: '200px' }}
+        />
+        <input 
+          type="date" 
+          value={filterDate}
+          onChange={(e) => setFilterDate(e.target.value)}
+          style={{ padding: '10px', fontSize: '16px' }}
+        />
+        <button 
+          onClick={handleExportCSV}
+          style={{ padding: '10px 15px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
+        >
+          Export to CSV
         </button>
       </div>
 
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <p style={{ color: 'red', fontWeight: 'bold' }}>{error}</p>}
       
       {loading ? (
         <p>Loading visitor data...</p>
@@ -47,16 +114,16 @@ function Dashboard() {
                 <th style={{ padding: '12px' }}>Email</th>
                 <th style={{ padding: '12px' }}>Phone</th>
                 <th style={{ padding: '12px' }}>Purpose</th>
-                <th style={{ padding: '12px' }}>Date Registered</th>
+                <th style={{ padding: '12px' }}>Date</th>
               </tr>
             </thead>
             <tbody>
-              {visitors.length === 0 ? (
+              {filteredVisitors.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ padding: '12px', textAlign: 'center' }}>No visitors found. Go register one!</td>
+                  <td colSpan="5" style={{ padding: '12px', textAlign: 'center' }}>No visitors found matching those filters.</td>
                 </tr>
               ) : (
-                visitors.map((visitor) => (
+                filteredVisitors.map((visitor) => (
                   <tr key={visitor._id} style={{ borderBottom: '1px solid #dee2e6' }}>
                     <td style={{ padding: '12px' }}>{visitor.name}</td>
                     <td style={{ padding: '12px' }}>{visitor.email}</td>
