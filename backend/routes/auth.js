@@ -1,78 +1,49 @@
-// backend/routes/auth.js
-const express = require('express');
-const bcrypt = require('bcryptjs'); // Used to encrypt passwords
-const jwt = require('jsonwebtoken'); // Used to generate login tokens
-const User = require('../models/User'); 
+import { useState } from 'react';
+import axios from 'axios';
 
-const router = express.Router();
+function AdminRegister() {
+  // ADD 'name' TO THE STATE
+  const [formData, setFormData] = useState({ name: '', email: '', password: '', role: 'Admin' });
+  const [message, setMessage] = useState('');
 
-// 1. REGISTER A NEW USER
-router.post('/register', async (req, res) => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     try {
-        // Extract data from the request
-        const { name, email, password, role } = req.body;
-
-        // Check if the user already exists in the database
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ message: 'User already exists with this email' });
-        }
-
-        // Encrypt the password before saving
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
-
-        // Create the new user
-        const newUser = new User({
-            name,
-            email,
-            password: hashedPassword,
-            role: role || 'Visitor' // If no role is provided, default to 'Visitor'
-        });
-
-        // Save to database
-        await newUser.save();
-        res.status(201).json({ message: 'User registered successfully!' });
-
+      await axios.post('https://visitor-pass-backend-qhoo.onrender.com/api/auth/register', formData);
+      setMessage('Admin account created! Now go to /login');
     } catch (error) {
-        res.status(500).json({ message: 'Server Error', error: error.message });
+      // This will now show the REAL error (like "Name is required")
+      setMessage(error.response?.data?.message || 'Registration failed.');
     }
-});
+  };
 
-// 2. LOGIN USER
-router.post('/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
+  return (
+    <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}>
+      <h2>Create Admin Account</h2>
+      {message && <p style={{ fontWeight: 'bold' }}>{message}</p>}
+      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        {/* ADD THIS INPUT */}
+        <input 
+          type="text" placeholder="Full Name" required 
+          onChange={(e) => setFormData({...formData, name: e.target.value})}
+          style={{ padding: '10px' }}
+        />
+        <input 
+          type="email" placeholder="Email" required 
+          onChange={(e) => setFormData({...formData, email: e.target.value})}
+          style={{ padding: '10px' }}
+        />
+        <input 
+          type="password" placeholder="Password" required 
+          onChange={(e) => setFormData({...formData, password: e.target.value})}
+          style={{ padding: '10px' }}
+        />
+        <button type="submit" style={{ padding: '10px', background: '#007BFF', color: 'white', border: 'none', borderRadius: '5px' }}>
+          Register Admin
+        </button>
+      </form>
+    </div>
+  );
+}
 
-        // Find the user by email
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ message: 'Invalid credentials' });
-        }
-
-        // Check if the entered password matches the encrypted password
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid credentials' });
-        }
-
-        // Generate the JWT Token (Your digital ID card)
-        const token = jwt.sign(
-            { id: user._id, role: user.role }, 
-            process.env.JWT_SECRET, // The secret key from your .env file
-            { expiresIn: '1d' } // Token expires in 24 hours
-        );
-
-        // Send the token and user details back to the frontend
-        res.status(200).json({
-            message: 'Login successful',
-            token,
-            user: { id: user._id, name: user.name, role: user.role }
-        });
-
-    } catch (error) {
-        res.status(500).json({ message: 'Server Error', error: error.message });
-    }
-});
-
-module.exports = router;
+export default AdminRegister;
