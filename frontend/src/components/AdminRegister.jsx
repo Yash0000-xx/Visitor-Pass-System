@@ -8,14 +8,14 @@ function AdminRegister() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Pointing to your backend auth register route
       await axios.post('https://visitor-pass-backend-qhoo.onrender.com/api/auth/register', formData);
       setMessage('Admin account created successfully! Now go to /login');
     } catch (error) {
-      setMessage('Registration failed. Make sure the email is unique.');
+      // THIS CHANGE SHOWS THE REAL ERROR FROM THE SERVER
+      const errorMessage = error.response?.data?.message || "Registration failed. Try again.";
+      setMessage(errorMessage);
     }
   };
-
   return (
     <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}>
       <h2>Create Admin Account</h2>
