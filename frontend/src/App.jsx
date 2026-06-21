@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard';
 import IssuePass from './components/IssuePass'; 
 import AdminRegister from './components/AdminRegister';
 import QRScanner from './components/QRScanner';
+import EmployeeDashboard from './components/EmployeeDashboard';
 function App() {
   return (
     <Router>
@@ -33,6 +34,7 @@ function App() {
             <Route path="/qr-scanner" element={<QRScanner />} />
             <Route path="/admin-register" element={<AdminRegister />} />
             <Route path="/issue-pass" element={<IssuePass />} />
+            <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
           </Routes>
         </div>
       </div>
