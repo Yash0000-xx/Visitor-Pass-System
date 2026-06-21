@@ -10,7 +10,7 @@ function AdminRegister() {
     try {
       await axios.post('https://visitor-pass-backend-qhoo.onrender.com/api/auth/register', {
         ...formData,
-        role: 'Admin' // Ensure we set the role to Admin
+        role: 'Admin' 
       });
       setMessage('Admin account created! Now go to /login');
     } catch (error) {
