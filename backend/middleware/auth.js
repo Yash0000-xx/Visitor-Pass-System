@@ -1,68 +1,31 @@
-const express = require('express');
-const bcrypt = require('bcryptjs'); 
-const jwt = require('jsonwebtoken'); 
-const User = require('../models/User'); 
+// backend/middleware/auth.js
+const jwt = require('jsonwebtoken');
 
-const router = express.Router();
-
-// 1. REGISTER A NEW USER
-router.post('/register', async (req, res) => {
+// This function acts as a digital bouncer for your API routes
+const verifyToken = (req, res, next) => {
     try {
-        const { name, email, password, role } = req.body;
+        // 1. Check if the user sent a token in their request headers
+        let token = req.header('Authorization');
 
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ message: 'User already exists with this email' });
+        if (!token) {
+            return res.status(403).json({ message: 'Access Denied. No token provided.' });
         }
 
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
+        // 2. Clean up the token string (remove the word "Bearer ")
+        if (token.startsWith('Bearer ')) {
+            token = token.slice(7, token.length).trimLeft();
+        }
 
-        const newUser = new User({
-            name,
-            email,
-            password: hashedPassword,
-            role: role || 'Visitor' 
-        });
-
-        await newUser.save();
-        res.status(201).json({ message: 'User registered successfully!' });
+        // 3. Verify the token using your secret key from the .env file
+        const verified = jwt.verify(token, process.env.JWT_SECRET);
+        
+        // 4. Attach the verified user data to the request and let them pass
+        req.user = verified;
+        next();
 
     } catch (error) {
-        res.status(500).json({ message: 'Server Error', error: error.message });
+        res.status(401).json({ message: 'Invalid or Expired Token' });
     }
-});
+};
 
-// 2. LOGIN USER
-router.post('/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ message: 'Invalid credentials' });
-        }
-
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid credentials' });
-        }
-
-        const token = jwt.sign(
-            { id: user._id, role: user.role }, 
-            process.env.JWT_SECRET, 
-            { expiresIn: '1d' }
-        );
-
-        res.status(200).json({
-            message: 'Login successful',
-            token,
-            user: { id: user._id, name: user.name, role: user.role }
-        });
-
-    } catch (error) {
-        res.status(500).json({ message: 'Server Error', error: error.message });
-    }
-});
-
-module.exports = router;
+module.exports = { verifyToken };
