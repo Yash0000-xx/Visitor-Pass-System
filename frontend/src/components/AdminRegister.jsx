@@ -24,7 +24,7 @@ function AdminRegister() {
       {message && <p style={{ fontWeight: 'bold' }}>{message}</p>}
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         
-        {/* THIS IS THE INPUT THAT WAS MISSING IN YOUR SCREENSHOT */}
+       
         <input 
           type="text" placeholder="Full Name" required 
           onChange={(e) => setFormData({...formData, name: e.target.value})}

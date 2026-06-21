@@ -1,84 +1,82 @@
-// frontend/src/components/RegisterVisitor.jsx
 import { useState } from 'react';
 import axios from 'axios';
 
 function RegisterVisitor() {
-  // State variables to hold the form data
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     purposeOfVisit: '',
-    hostId: '64c1234567890abcdef12345' // Placeholder for now
+    hostId: ''
   });
   
+
+  const [photo, setPhoto] = useState(null);
   const [message, setMessage] = useState('');
 
-  // Handle changes when the user types in the input boxes
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setMessage('Registering...');
+
+
+    const data = new FormData();
+    data.append('name', formData.name);
+    data.append('email', formData.email);
+    data.append('phone', formData.phone);
+    data.append('purposeOfVisit', formData.purposeOfVisit);
+    data.append('hostId', formData.hostId);
+    
+
+    if (photo) {
+      data.append('photo', photo);
+    }
+
+    try {
+
+      await axios.post('https://visitor-pass-backend-qhoo.onrender.com/api/visitors/register', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      setMessage('Visitor registered successfully!');
+    } catch (error) {
+      setMessage(error.response?.data?.message || 'Registration failed.');
+    }
+  };
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Submit the form to the backend API
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setMessage('');
-
-    try {
-      const response = await axios.post('https://visitor-pass-backend-qhoo.onrender.com/api/visitors/register', formData);
-      setMessage(response.data.message);
-      
-      // Clear the form after success
-      setFormData({ name: '', email: '', phone: '', purposeOfVisit: '', hostId: formData.hostId });
-    } catch (error) {
-      setMessage(error.response?.data?.message || 'Error registering visitor.');
-    }
-  };
-
   return (
     <div style={{ maxWidth: '500px', margin: '50px auto', padding: '20px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}>
-      <h2>Visitor Registration</h2>
+      <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>Visitor Registration</h2>
       
-      {/* Show success or error messages */}
-      {message && <p style={{ color: message.includes('success') ? 'green' : 'red', fontWeight: 'bold' }}>{message}</p>}
-
+      {message && <p style={{ fontWeight: 'bold', textAlign: 'center' }}>{message}</p>}
+      
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+        <input name="name" type="text" placeholder="Full Name" required onChange={handleChange} style={{ padding: '10px' }} />
+        <input name="email" type="email" placeholder="Email Address" required onChange={handleChange} style={{ padding: '10px' }} />
+        <input name="phone" type="text" placeholder="Phone Number" required onChange={handleChange} style={{ padding: '10px' }} />
+        <input name="purposeOfVisit" type="text" placeholder="Purpose of Visit" required onChange={handleChange} style={{ padding: '10px' }} />
         
-        <input 
-          type="text" name="name" placeholder="Full Name" 
-          value={formData.name} onChange={handleChange} required 
-          style={{ padding: '10px', fontSize: '16px' }}
-        />
+       
+        <input name="hostId" type="text" placeholder="Host ID" required onChange={handleChange} style={{ padding: '10px' }} />
         
-        <input 
-          type="email" name="email" placeholder="Email Address" 
-          value={formData.email} onChange={handleChange} required 
-          style={{ padding: '10px', fontSize: '16px' }}
-        />
+        <div style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '5px' }}>
+          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Visitor Photo (Required)</label>
         
-        <input 
-          type="tel" name="phone" placeholder="Phone Number" 
-          value={formData.phone} onChange={handleChange} required 
-          style={{ padding: '10px', fontSize: '16px' }}
-        />
+          <input 
+            type="file" 
+            accept="image/*" 
+            required
+            onChange={(e) => setPhoto(e.target.files[0])} 
+          />
+        </div>
 
-        <textarea 
-          name="purposeOfVisit" placeholder="Purpose of Visit" 
-          value={formData.purposeOfVisit} onChange={handleChange} required 
-          style={{ padding: '10px', fontSize: '16px', minHeight: '80px' }}
-        />
-
-        {/* Note: In a fully finished app, this would be a dropdown menu of actual Employees */}
-        <input 
-          type="text" name="hostId" placeholder="Host ID (Employee)" 
-          value={formData.hostId} disabled 
-          style={{ padding: '10px', fontSize: '16px', backgroundColor: '#e9ecef' }}
-        />
-        
-        <button type="submit" style={{ padding: '12px', fontSize: '16px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+        <button type="submit" style={{ padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
           Register Visitor
         </button>
-
       </form>
     </div>
   );

@@ -1,4 +1,4 @@
-// frontend/src/components/Dashboard.jsx
+
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -7,17 +7,14 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  // NEW: State variables to hold our filter inputs
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState('');
 
   useEffect(() => {
     const fetchVisitors = async () => {
       try {
-        // NEW: Grab the digital ID from the browser's storage
         const token = localStorage.getItem('token');
         
-        // NEW: Pass the token in the 'headers' so the backend bouncer lets us in
         const response = await axios.get('https://visitor-pass-backend-qhoo.onrender.com/api/visitors', {
           headers: { Authorization: `Bearer ${token}` }
         });
@@ -33,36 +30,29 @@ function Dashboard() {
     fetchVisitors();
   }, []);
 
-  // NEW: The Filtering Logic
   const filteredVisitors = visitors.filter((visitor) => {
-    // 1. Check if the name or purpose matches the search bar
     const matchesSearch = visitor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           visitor.purposeOfVisit.toLowerCase().includes(searchTerm.toLowerCase());
     
-    // 2. Check if the date matches the date picker
     const visitorDate = new Date(visitor.createdAt).toISOString().split('T')[0];
     const matchesDate = filterDate ? visitorDate === filterDate : true;
 
     return matchesSearch && matchesDate;
   });
 
-  // NEW: The CSV Export Logic
   const handleExportCSV = () => {
     if (filteredVisitors.length === 0) {
       alert("No data to export!");
       return;
     }
 
-    // Create the column headers for the spreadsheet
     let csvContent = "Name,Email,Phone,Purpose,Date Registered\n";
 
-    // Loop through the visible rows and format them for CSV
     filteredVisitors.forEach(v => {
       const date = new Date(v.createdAt).toLocaleDateString();
       csvContent += `"${v.name}","${v.email}","${v.phone}","${v.purposeOfVisit}","${date}"\n`;
     });
 
-    // Create an invisible download link and click it
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -78,7 +68,6 @@ function Dashboard() {
         <h2>Admin Dashboard</h2>
       </div>
 
-      {/* NEW: Filter Controls & Export Button */}
       <div style={{ display: 'flex', gap: '15px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <input 
           type="text" 
