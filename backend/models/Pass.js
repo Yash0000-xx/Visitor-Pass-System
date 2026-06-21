@@ -1,4 +1,4 @@
-// backend/models/Pass.js
+
 const mongoose = require('mongoose');
 
 const passSchema = new mongoose.Schema({
@@ -8,7 +8,7 @@ const passSchema = new mongoose.Schema({
         required: true 
     },
     qrCodeData: { 
-        type: String // We will store the generated QR code string here in Phase 3
+        type: String 
     },
     status: { 
         type: String, 

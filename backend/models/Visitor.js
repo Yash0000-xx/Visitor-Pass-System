@@ -1,4 +1,4 @@
-// backend/models/Visitor.js
+
 const mongoose = require('mongoose');
 
 const visitorSchema = new mongoose.Schema({
@@ -15,7 +15,7 @@ const visitorSchema = new mongoose.Schema({
         required: true 
     },
     photoUrl: { 
-        type: String // We will save the image URL or base64 string here later
+        type: String 
     },
     purposeOfVisit: { 
         type: String, 
@@ -23,7 +23,7 @@ const visitorSchema = new mongoose.Schema({
     },
     hostId: { 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'User' // This links the visitor to the specific Employee they are visiting
+        ref: 'User' 
     }
 }, { timestamps: true });
 

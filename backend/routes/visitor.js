@@ -1,33 +1,29 @@
-// backend/routes/visitor.js
 const express = require('express');
-const Visitor = require('../models/Visitor');
-const { verifyToken } = require('../middleware/auth'); // Security bouncer
-
 const router = express.Router();
+const Visitor = require('../models/Visitor');
+const { verifyToken, checkRole } = require('../middleware/auth');
+const upload = require('../middleware/upload');
 
-// 1. REGISTER A NEW VISITOR (With Input Validation to satisfy Mentor Requirement #8)
-router.post('/register', async (req, res) => {
+router.post('/register', upload.single('photo'), async (req, res) => {
     try {
-        const { name, email, phone, photoUrl, purposeOfVisit, hostId } = req.body;
+        const { name, email, phone, purposeOfVisit, hostId } = req.body;
         
-        // --- INPUT VALIDATION LOGIC ---
-        // 1. Check for missing required fields
+       
+        const photoUrl = req.file ? `/uploads/${req.file.filename}` : '';
+
         if (!name || !email || !phone || !purposeOfVisit || !hostId) {
             return res.status(400).json({ message: 'All required fields must be filled.' });
         }
-
-        // 2. Validate Email Format using Regex
+        
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             return res.status(400).json({ message: 'Please provide a valid email address.' });
         }
 
-        // 3. Validate Phone Number (Basic check for at least 10 digits)
-        const phoneDigits = phone.replace(/\D/g, ''); // Strips out dashes/spaces to just count numbers
+        const phoneDigits = phone.replace(/\D/g, ''); 
         if (phoneDigits.length < 10) {
             return res.status(400).json({ message: 'Phone number must be at least 10 digits.' });
         }
-        // ------------------------------
 
         const newVisitor = new Visitor({ 
             name, 
@@ -46,8 +42,8 @@ router.post('/register', async (req, res) => {
     }
 });
 
-// 2. GET ALL VISITORS (Protected: Only logged-in Admins/Security can see this list)
-router.get('/', verifyToken, async (req, res) => { 
+
+router.get('/', verifyToken, checkRole(['Admin', 'Security']), async (req, res) => {
     try {
         const visitors = await Visitor.find().populate('hostId', 'name email'); 
         res.status(200).json(visitors);

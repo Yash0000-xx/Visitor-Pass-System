@@ -1,4 +1,4 @@
-// backend/models/User.js
+
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
@@ -17,9 +17,9 @@ const userSchema = new mongoose.Schema({
     },
     role: { 
         type: String, 
-        enum: ['Admin', 'Security', 'Employee', 'Visitor'], // Restricts roles to these 4 exact words
+        enum: ['Admin', 'Security', 'Employee', 'Visitor'], 
         default: 'Visitor' 
     }
-}, { timestamps: true }); // Automatically adds 'createdAt' and 'updatedAt' dates
+}, { timestamps: true }); 
 
 module.exports = mongoose.model('User', userSchema);

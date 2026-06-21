@@ -1,4 +1,4 @@
-// backend/models/CheckLog.js
+
 const mongoose = require('mongoose');
 
 const checkLogSchema = new mongoose.Schema({
@@ -9,7 +9,7 @@ const checkLogSchema = new mongoose.Schema({
     },
     scannedBy: { 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'User' // Links to the Security guard who scanned the pass
+        ref: 'User' 
     },
     action: { 
         type: String, 

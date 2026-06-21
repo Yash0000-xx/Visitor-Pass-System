@@ -1,15 +1,15 @@
-// backend/models/Appointment.js
+
 const mongoose = require('mongoose');
 
 const appointmentSchema = new mongoose.Schema({
     visitorId: { 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'Visitor', // Links to the Visitor model we made earlier
+        ref: 'Visitor', 
         required: true 
     },
     hostId: { 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'User', // Links to the Employee/Host
+        ref: 'User',
         required: true 
     },
     date: { 
@@ -23,7 +23,7 @@ const appointmentSchema = new mongoose.Schema({
     status: { 
         type: String, 
         enum: ['Pending', 'Approved', 'Rejected'], 
-        default: 'Pending' // All new requests start as pending
+        default: 'Pending' 
     }
 }, { timestamps: true });
 
