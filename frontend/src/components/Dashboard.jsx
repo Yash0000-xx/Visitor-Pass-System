@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -9,26 +8,34 @@ function Dashboard() {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState('');
+  
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => {
     const fetchVisitors = async () => {
+      setLoading(true);
       try {
         const token = localStorage.getItem('token');
         
-        const response = await axios.get('https://visitor-pass-backend-qhoo.onrender.com/api/visitors', {
+      
+        const response = await axios.get(`https://visitor-pass-backend-qhoo.onrender.com/api/visitors?page=${currentPage}&limit=10`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         
-        setVisitors(response.data);
+      
+        setVisitors(response.data.visitors);
+        setTotalPages(response.data.totalPages);
         setLoading(false);
       } catch (err) {
-        setError('Access Denied. Please make sure you are logged in as an Admin/Security.');
+        setError('Access Denied. Please make sure you are logged in.');
         setLoading(false);
       }
     };
 
     fetchVisitors();
-  }, []);
+  }, [currentPage]); 
 
   const filteredVisitors = visitors.filter((visitor) => {
     const matchesSearch = visitor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -74,13 +81,13 @@ function Dashboard() {
           placeholder="Search name or purpose..." 
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          style={{ padding: '10px', fontSize: '16px', flex: 1, minWidth: '200px' }}
+          style={{ padding: '10px', fontSize: '16px', flex: 1, minWidth: '200px', borderRadius: '4px', border: '1px solid #ccc' }}
         />
         <input 
           type="date" 
           value={filterDate}
           onChange={(e) => setFilterDate(e.target.value)}
-          style={{ padding: '10px', fontSize: '16px' }}
+          style={{ padding: '10px', fontSize: '16px', borderRadius: '4px', border: '1px solid #ccc' }}
         />
         <button 
           onClick={handleExportCSV}
@@ -109,7 +116,7 @@ function Dashboard() {
             <tbody>
               {filteredVisitors.length === 0 ? (
                 <tr>
-                  <td colSpan="5" style={{ padding: '12px', textAlign: 'center' }}>No visitors found matching those filters.</td>
+                  <td colSpan="5" style={{ padding: '12px', textAlign: 'center' }}>No visitors found on this page.</td>
                 </tr>
               ) : (
                 filteredVisitors.map((visitor) => (
@@ -124,6 +131,28 @@ function Dashboard() {
               )}
             </tbody>
           </table>
+
+          {/* Pagination Controls */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px' }}>
+            <button 
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1}
+              style={{ padding: '8px 16px', background: currentPage === 1 ? '#ccc' : '#007BFF', color: 'white', border: 'none', borderRadius: '4px', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+            >
+              Previous
+            </button>
+            
+            <span style={{ fontWeight: 'bold' }}>Page {currentPage} of {totalPages}</span>
+            
+            <button 
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              disabled={currentPage === totalPages || totalPages === 0}
+              style={{ padding: '8px 16px', background: (currentPage === totalPages || totalPages === 0) ? '#ccc' : '#007BFF', color: 'white', border: 'none', borderRadius: '4px', cursor: (currentPage === totalPages || totalPages === 0) ? 'not-allowed' : 'pointer' }}
+            >
+              Next
+            </button>
+          </div>
+
         </div>
       )}
     </div>

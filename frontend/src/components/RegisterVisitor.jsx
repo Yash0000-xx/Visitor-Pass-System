@@ -23,6 +23,20 @@ function RegisterVisitor() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^[0-9]{10}$/;
+
+    if (!emailRegex.test(formData.email)) {
+        setMessage('Error: Please enter a valid email address.');
+        return;
+    }
+    if (!phoneRegex.test(formData.phone)) {
+        setMessage('Error: Phone number must be exactly 10 digits.');
+        return;
+    }
+
     setMessage('Registering...');
 
     const data = new FormData();
@@ -37,7 +51,10 @@ function RegisterVisitor() {
       await axios.post('https://visitor-pass-backend-qhoo.onrender.com/api/visitors/register', data, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setMessage('Visitor registered! Awaiting employee approval.');
+      setMessage('Visitor registered! Awaiting approval.');
+     
+      setFormData({ name: '', email: '', phone: '', purposeOfVisit: '', hostId: '' });
+      setPhoto(null);
     } catch (error) {
       setMessage(error.response?.data?.message || 'Registration failed.');
     }
@@ -50,16 +67,15 @@ function RegisterVisitor() {
   return (
     <div style={{ maxWidth: '500px', margin: '50px auto', padding: '20px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}>
       <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>Visitor Registration</h2>
-      {message && <p style={{ fontWeight: 'bold', textAlign: 'center' }}>{message}</p>}
+      {message && <p style={{ fontWeight: 'bold', textAlign: 'center', color: message.startsWith('Error') ? 'red' : 'green' }}>{message}</p>}
       
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        <input name="name" type="text" placeholder="Full Name" required onChange={handleChange} style={{ padding: '10px' }} />
-        <input name="email" type="email" placeholder="Email Address" required onChange={handleChange} style={{ padding: '10px' }} />
-        <input name="phone" type="text" placeholder="Phone Number" required onChange={handleChange} style={{ padding: '10px' }} />
-        <input name="purposeOfVisit" type="text" placeholder="Purpose of Visit" required onChange={handleChange} style={{ padding: '10px' }} />
+        <input name="name" type="text" placeholder="Full Name" required value={formData.name} onChange={handleChange} style={{ padding: '10px' }} />
+        <input name="email" type="email" placeholder="Email Address" required value={formData.email} onChange={handleChange} style={{ padding: '10px' }} />
+        <input name="phone" type="text" placeholder="Phone Number" required value={formData.phone} onChange={handleChange} style={{ padding: '10px' }} />
+        <input name="purposeOfVisit" type="text" placeholder="Purpose of Visit" required value={formData.purposeOfVisit} onChange={handleChange} style={{ padding: '10px' }} />
         
-      
-        <select name="hostId" required onChange={handleChange} style={{ padding: '10px' }} defaultValue="">
+        <select name="hostId" required value={formData.hostId} onChange={handleChange} style={{ padding: '10px' }}>
           <option value="" disabled>Select Employee to Visit</option>
           {employees.map(emp => (
             <option key={emp._id} value={emp._id}>{emp.name}</option>

@@ -26,3 +26,4 @@
 * **`POST /scan`** 🔒
   * **Description:** Used by security guards to scan a pass and log entry/exit times. Verifies pass validity and logs the exact timestamp.
   * **Body:** `{ passId, action: "Check-In" | "Check-Out" }`
+  "Notification System" explaining: "This project uses Nodemailer with Gmail SMTP for real-time notifications and OTP verification. This approach was chosen to provide a functional, zero-cost alternative to paid SMS gateway APIs for student deployment."

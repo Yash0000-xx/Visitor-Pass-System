@@ -8,7 +8,6 @@ function QRScanner() {
   const [action, setAction] = useState('Check-In');
 
   useEffect(() => {
-    
     const scanner = new Html5QrcodeScanner('reader', {
       qrbox: { width: 250, height: 250 },
       fps: 5,
@@ -17,8 +16,17 @@ function QRScanner() {
     scanner.render(onScanSuccess, onScanFailure);
 
     function onScanSuccess(decodedText) {
+  
+      const isValidMongoId = /^[a-fA-F0-9]{24}$/.test(decodedText);
+      
+      if (!isValidMongoId) {
+        setMessage('Invalid QR Code Format. This is not a system-generated pass.');
+        return; 
+      }
+
       scanner.clear(); 
       setScanResult(decodedText);
+      setMessage(''); 
     }
 
     function onScanFailure(error) {
@@ -42,7 +50,7 @@ function QRScanner() {
       });
 
       setMessage(response.data.message);
-      setScanResult(null);
+      setScanResult(null); 
     } catch (error) {
       setMessage(error.response?.data?.message || 'Failed to process scan. Is this a valid pass?');
     }
@@ -52,13 +60,13 @@ function QRScanner() {
     <div style={{ maxWidth: '600px', margin: '50px auto', padding: '20px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)', textAlign: 'center' }}>
       <h2>Security: Scan Pass</h2>
       
-      {message && <p style={{ fontWeight: 'bold', color: message.includes('Failed') ? 'red' : 'green' }}>{message}</p>}
+      {message && <p style={{ fontWeight: 'bold', color: message.includes('Failed') || message.includes('Invalid') ? 'red' : 'green' }}>{message}</p>}
 
       {!scanResult ? (
         <div id="reader" style={{ width: '100%', marginTop: '20px' }}></div>
       ) : (
         <div style={{ marginTop: '20px', padding: '20px', border: '2px solid #28a745', borderRadius: '8px' }}>
-          <h3>Pass Detected!</h3>
+          <h3>Valid Pass Detected!</h3>
           <p style={{ fontSize: '12px', color: 'gray' }}>ID: {scanResult}</p>
           
           <div style={{ margin: '20px 0' }}>

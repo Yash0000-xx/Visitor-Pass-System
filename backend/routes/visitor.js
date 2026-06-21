@@ -4,48 +4,84 @@ const Visitor = require('../models/Visitor');
 const User = require('../models/User');
 const { verifyToken, checkRole } = require('../middleware/auth');
 const upload = require('../middleware/upload');
-const sendSMS = require('../utils/sendSMS');
+const sendEmail = require('../utils/sendEmail'); 
+
 router.post('/register', upload.single('photo'), async (req, res) => {
     try {
         const { name, email, phone, purposeOfVisit, hostId } = req.body;
         
-        const photoUrl = req.file ? `/uploads/${req.file.filename}` : '';
+        if (!req.file) {
+            return res.status(400).json({ message: 'A visitor photo is strictly required.' });
+        }
+        
+        const photoUrl = `/uploads/${req.file.filename}`;
 
         if (!name || !email || !phone || !purposeOfVisit || !hostId) {
             return res.status(400).json({ message: 'All required fields must be filled.' });
         }
 
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return res.status(400).json({ message: 'Please provide a valid email address.' });
-        }
-
-        const phoneDigits = phone.replace(/\D/g, ''); 
-        if (phoneDigits.length < 10) {
-            return res.status(400).json({ message: 'Phone number must be at least 10 digits.' });
-        }
+      
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
         const newVisitor = new Visitor({ 
-            name, 
-            email, 
-            phone, 
-            photoUrl, 
-            purposeOfVisit, 
-            hostId 
+            name, email, phone, photoUrl, purposeOfVisit, hostId,
+            otp: otp, 
+            status: 'Pending' 
         });
 
         await newVisitor.save();
-        res.status(201).json({ message: 'Visitor registered successfully!', visitor: newVisitor });
+        
+        
+        await sendEmail(email, "Visitor Registration OTP", `Your verification code is: ${otp}`);
+
+        res.status(201).json({ message: 'Visitor registered! Please check email for OTP.', visitorId: newVisitor._id });
 
     } catch (error) {
         res.status(500).json({ message: 'Error registering visitor', error: error.message });
     }
 });
 
+
+router.post('/verify-otp', async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        const visitor = await Visitor.findOne({ email });
+
+        if (!visitor || visitor.otp !== otp) {
+            return res.status(400).json({ message: 'Invalid OTP.' });
+        }
+
+        visitor.status = 'Approved';
+        visitor.otp = null; 
+        await visitor.save();
+
+        res.json({ message: 'OTP Verified! Visitor Approved.' });
+    } catch (error) {
+        res.status(500).json({ message: 'Server error during verification.' });
+    }
+});
+
+
 router.get('/', verifyToken, checkRole(['Admin', 'Security']), async (req, res) => {
     try {
-        const visitors = await Visitor.find().populate('hostId', 'name email'); 
-        res.status(200).json(visitors);
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        const visitors = await Visitor.find()
+            .populate('hostId', 'name email')
+            .skip(skip)
+            .limit(limit)
+            .sort({ createdAt: -1 });
+
+        const total = await Visitor.countDocuments();
+
+        res.status(200).json({
+            visitors,
+            currentPage: page,
+            totalPages: Math.ceil(total / limit),
+            totalVisitors: total
+        });
     } catch (error) {
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
@@ -60,15 +96,6 @@ router.get('/employees', async (req, res) => {
     }
 });
 
-router.get('/my-visitors', verifyToken, checkRole(['Employee']), async (req, res) => {
-    try {
-        const visitors = await Visitor.find({ hostId: req.user.id });
-        res.json(visitors);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching your visitors' });
-    }
-});
-
 router.put('/:id/status', verifyToken, checkRole(['Employee', 'Admin']), async (req, res) => {
     try {
         const { status } = req.body;
@@ -78,10 +105,8 @@ router.put('/:id/status', verifyToken, checkRole(['Employee', 'Admin']), async (
             { new: true }
         );
 
-     
-        if (status === 'Approved' && visitor.phone) {
-            const message = `Hello ${visitor.name}, your visit has been approved! Show your ID at the front desk.`;
-            await sendSMS(visitor.phone, message);
+        if (status === 'Approved') {
+            await sendEmail(visitor.email, "Visit Approved", `Hello ${visitor.name}, your visit has been approved!`);
         }
 
         res.json({ message: `Pass ${status.toLowerCase()}!`, visitor });
