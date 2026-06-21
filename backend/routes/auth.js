@@ -5,7 +5,6 @@ const User = require('../models/User');
 
 const router = express.Router();
 
-
 router.post('/register', async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
@@ -22,7 +21,7 @@ router.post('/register', async (req, res) => {
             name,
             email,
             password: hashedPassword,
-            role: role || 'Visitor' 
+            role: role || 'Employee' 
         });
 
         await newUser.save();
@@ -32,7 +31,6 @@ router.post('/register', async (req, res) => {
         res.status(500).json({ message: 'Server Error', error: error.message });
     }
 });
-
 
 router.post('/login', async (req, res) => {
     try {

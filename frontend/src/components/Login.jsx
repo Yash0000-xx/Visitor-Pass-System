@@ -1,23 +1,18 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 function Login() {
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  
 
   const navigate = useNavigate();
-
 
   const handleLogin = async (e) => {
     e.preventDefault(); 
 
     try {
-      
       const response = await axios.post('https://visitor-pass-backend-qhoo.onrender.com/api/auth/login', {
         email,
         password
@@ -28,11 +23,15 @@ function Login() {
 
       alert('Login Successful!');
       
-  
-      navigate('/dashboard');
+      const userRole = response.data.user.role;
+      
+      if (userRole === 'Employee') {
+        navigate('/employee-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
 
     } catch (err) {
-    
       setError(err.response?.data?.message || 'Login failed. Please try again.');
     }
   };
@@ -41,7 +40,7 @@ function Login() {
     <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}>
       <h2>System Login</h2>
       
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <p style={{ color: 'red', fontWeight: 'bold' }}>{error}</p>}
 
       <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         
@@ -51,7 +50,7 @@ function Login() {
           value={email} 
           onChange={(e) => setEmail(e.target.value)} 
           required 
-          style={{ padding: '10px', fontSize: '16px' }}
+          style={{ padding: '10px', fontSize: '16px', borderRadius: '4px', border: '1px solid #ccc' }}
         />
         
         <input 
@@ -60,10 +59,10 @@ function Login() {
           value={password} 
           onChange={(e) => setPassword(e.target.value)} 
           required 
-          style={{ padding: '10px', fontSize: '16px' }}
+          style={{ padding: '10px', fontSize: '16px', borderRadius: '4px', border: '1px solid #ccc' }}
         />
         
-        <button type="submit" style={{ padding: '10px', fontSize: '16px', background: '#007BFF', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
+        <button type="submit" style={{ padding: '12px', fontSize: '16px', background: '#007BFF', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
           Login
         </button>
 
