@@ -20,7 +20,6 @@ router.post('/register', upload.single('photo'), async (req, res) => {
             return res.status(400).json({ message: 'All required fields must be filled.' });
         }
 
-      
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
         const newVisitor = new Visitor({ 
@@ -30,7 +29,6 @@ router.post('/register', upload.single('photo'), async (req, res) => {
         });
 
         await newVisitor.save();
-        
         
         await sendEmail(email, "Visitor Registration OTP", `Your verification code is: ${otp}`);
 
@@ -47,7 +45,13 @@ router.post('/verify-otp', async (req, res) => {
         const { email, otp } = req.body;
         const visitor = await Visitor.findOne({ email });
 
-      if (String(visitor.otp) !== String(req.body.otp))
+        // Safety check in case the email doesn't exist
+        if (!visitor) {
+            return res.status(404).json({ message: 'Visitor not found.' });
+        }
+
+        // FIXED: Added the opening bracket '{' that was missing here
+        if (String(visitor.otp) !== String(req.body.otp)) {
             return res.status(400).json({ message: 'Invalid OTP.' });
         }
 
@@ -57,7 +61,9 @@ router.post('/verify-otp', async (req, res) => {
 
         res.json({ message: 'OTP Verified! Visitor Approved.' });
     } catch (error) {
-        res.status(500).json({ message: 'Server error during verification.' });
+        // Added error logging so we can see if anything else breaks
+        console.error("Verification Error:", error);
+        res.status(500).json({ message: 'Server error during verification.', error: error.message });
     }
 });
 
