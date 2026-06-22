@@ -24,7 +24,6 @@ function RegisterVisitor() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^[0-9]{10}$/;
 
@@ -52,11 +51,11 @@ function RegisterVisitor() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setMessage('Visitor registered! Awaiting approval.');
-     
+      
       setFormData({ name: '', email: '', phone: '', purposeOfVisit: '', hostId: '' });
       setPhoto(null);
     } catch (error) {
-      setMessage(error.response?.data?.message || 'Registration failed.');
+      setMessage(error.response?.data?.message || 'Error: Registration failed.');
     }
   };
 
@@ -67,7 +66,33 @@ function RegisterVisitor() {
   return (
     <div style={{ maxWidth: '500px', margin: '50px auto', padding: '20px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}>
       <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>Visitor Registration</h2>
-      {message && <p style={{ fontWeight: 'bold', textAlign: 'center', color: message.startsWith('Error') ? 'red' : 'green' }}>{message}</p>}
+      
+      {/* UPDATED MESSAGE AND BUTTON BLOCK */}
+      {message && (
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <p style={{ fontWeight: 'bold', color: message.startsWith('Error') ? 'red' : 'green' }}>
+                {message}
+            </p>
+            {message.includes('registered') && (
+                <button 
+                    type="button" 
+                    onClick={() => window.location.href = '/verify-otp'}
+                    style={{
+                        marginTop: '10px',
+                        padding: '10px 20px',
+                        backgroundColor: '#007bff',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '5px',
+                        cursor: 'pointer',
+                        fontWeight: 'bold'
+                    }}
+                >
+                    Proceed to Verify OTP
+                </button>
+            )}
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
         <input name="name" type="text" placeholder="Full Name" required value={formData.name} onChange={handleChange} style={{ padding: '10px' }} />
