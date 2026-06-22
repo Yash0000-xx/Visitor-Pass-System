@@ -1,33 +1,26 @@
-const nodemailer = require('nodemailer');
+const axios = require('axios');
 
 const sendEmail = async (to, subject, text) => {
-    console.log("--> [EMAIL] Attempting Port 587 TLS Bypass...");
+    console.log("--> [EMAIL] Bypassing SMTP. Sending via EmailJS API...");
 
-    const transporter = nodemailer.createTransport({
-        host: 'smtp.gmail.com',
-        port: 587, // Changed from 465
-        secure: false, // MUST be false for port 587
-        requireTLS: true,
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
-        },
-        tls: {
-            rejectUnauthorized: false // Helps bypass strict server checks
+    const data = {
+        service_id: process.env.EMAILJS_SERVICE_ID,
+        template_id: process.env.EMAILJS_TEMPLATE_ID,
+        user_id: process.env.EMAILJS_PUBLIC_KEY,
+        accessToken: process.env.EMAILJS_PRIVATE_KEY,
+        template_params: {
+            to_email: to,
+            subject: subject,
+            message: text
         }
-    });
+    };
 
     try {
-        await transporter.sendMail({ 
-            from: process.env.EMAIL_USER, 
-            to, 
-            subject, 
-            text 
-        });
-        console.log("--> [EMAIL] Success! Email sent.");
+        await axios.post('https://api.emailjs.com/api/v1.0/email/send', data);
+        console.log("--> [EMAIL] Success! Sent via EmailJS API.");
     } catch (error) {
-        console.log("--> [EMAIL] FAILED:", error.message);
-        throw error;
+        console.error("--> [EMAIL] FAILED:", error.response?.data || error.message);
+        throw new Error('EmailJS failed to send');
     }
 };
 
