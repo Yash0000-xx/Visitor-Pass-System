@@ -1,5 +1,5 @@
 const express = require('express');
-const CheckLog = require('../models/Checklog');
+const CheckLog = require('../models/CheckLog');
 const Pass = require('../models/Pass');
 const { verifyToken } = require('../middleware/auth');
 
