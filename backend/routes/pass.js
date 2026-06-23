@@ -1,7 +1,7 @@
 const express = require('express');
 const QRCode = require('qrcode');
 const Pass = require('../models/Pass');
-const Appointment = require('../models/appointment');
+const Appointment = require('../models/Appointment');
 const router = express.Router();
 
 router.post('/generate/:appointmentId', async (req, res) => {
