@@ -1,51 +1,55 @@
-
 const express = require('express');
 const QRCode = require('qrcode');
 const Pass = require('../models/Pass');
-const Appointment = require('../models/Appointment');
+const Appointment = require('../models/appointment');
 const router = express.Router();
 
-
 router.post('/generate/:appointmentId', async (req, res) => {
+    let targetApptId = req.params.appointmentId;
+
+    if (!targetApptId) {
+        return res.status(400).json({ error: "Missing appointment ID in URL" });
+    }
+
     try {
-       
-        const appointment = await Appointment.findById(req.params.appointmentId).populate('visitorId');
+        let foundAppt = await Appointment.findById(targetApptId).populate('visitorId');
         
-        if (!appointment) {
-            return res.status(404).json({ message: 'Appointment not found' });
-        }
-        if (appointment.status !== 'Approved') {
-            return res.status(400).json({ message: 'Cannot issue pass. Appointment is not approved yet.' });
+        if (!foundAppt) {
+            return res.status(404).json({ error: "No appointment found with that ID" });
         }
 
+        if (foundAppt.status !== 'Approved') {
+            return res.status(400).json({ error: "You can only generate passes for approved appointments" });
+        }
+
+        let qrPayload = {
+            appointmentId: foundAppt._id,
+            visitorName: foundAppt.visitorId.name,
+            hostId: foundAppt.hostId
+        };
         
-        const qrData = JSON.stringify({ 
-            appointmentId: appointment._id, 
-            visitorName: appointment.visitorId.name,
-            hostId: appointment.hostId
+        let stringPayload = JSON.stringify(qrPayload);
+        let generatedQr = await QRCode.toDataURL(stringPayload);
+
+        let expirationDate = new Date(foundAppt.date);
+        expirationDate.setHours(23, 59, 59);
+
+        let newVisitorPass = new Pass({
+            appointmentId: foundAppt._id,
+            qrCodeData: generatedQr,
+            validUntil: expirationDate
         });
+
+        await newVisitorPass.save();
         
-      
-        const qrCodeImage = await QRCode.toDataURL(qrData);
-
-        const validUntil = new Date(appointment.date);
-        validUntil.setHours(23, 59, 59);
-
-       
-        const newPass = new Pass({
-            appointmentId: appointment._id,
-            qrCodeData: qrCodeImage,
-            validUntil: validUntil
-        });
-
-        await newPass.save();
         res.status(201).json({ 
-            message: 'Pass generated successfully!', 
-            pass: newPass 
+            msg: "Digital pass created", 
+            passData: newVisitorPass 
         });
 
-    } catch (error) {
-        res.status(500).json({ message: 'Error generating pass', error: error.message });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ error: "Failed to create the visitor pass" });
     }
 });
 

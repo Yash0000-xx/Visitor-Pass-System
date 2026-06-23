@@ -3,72 +3,76 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 function Login() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+    const [userEmail, setUserEmail] = useState('');
+    const [userPass, setUserPass] = useState('');
+    const [failMsg, setFailMsg] = useState('');
 
-  const navigate = useNavigate();
+    const navigate = useNavigate();
 
-  const handleLogin = async (e) => {
-    e.preventDefault(); 
+    const handleLoginSubmit = async (e) => {
+        e.preventDefault();
+        setFailMsg('');
 
-    try {
-      const response = await axios.post('https://visitor-pass-backend-qhoo.onrender.com/api/auth/login', {
-        email,
-        password
-      });
+        try {
+            let backendLink = import.meta.env.VITE_API_URL + '/api/auth/login';
+            
+            let res = await axios.post(backendLink, {
+                email: userEmail,
+                password: userPass
+            });
 
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('userRole', response.data.user.role);
+            localStorage.setItem('token', res.data.token);
+            localStorage.setItem('userRole', res.data.userData.role);
 
-      alert('Login Successful!');
-      
-      const userRole = response.data.user.role;
-      
-      if (userRole === 'Employee') {
-        navigate('/employee-dashboard');
-      } else {
-        navigate('/dashboard');
-      }
+            let fetchedRole = res.data.userData.role;
+            
+            if (fetchedRole === 'Employee') {
+                navigate('/employee-dashboard');
+            } else {
+                navigate('/dashboard');
+            }
 
-    } catch (err) {
-      setError(err.response?.data?.message || 'Login failed. Please try again.');
-    }
-  };
+        } catch (err) {
+            console.log(err);
+            if (err.response && err.response.data && err.response.data.error) {
+                setFailMsg(err.response.data.error);
+            } else {
+                setFailMsg("Login failed. Check your email and password.");
+            }
+        }
+    };
 
-  return (
-    <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}>
-      <h2>System Login</h2>
-      
-      {error && <p style={{ color: 'red', fontWeight: 'bold' }}>{error}</p>}
+    return (
+        <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '5px' }}>
+            <h2>System Login</h2>
+            
+            {failMsg && <p style={{ color: 'red', fontWeight: 'bold' }}>{failMsg}</p>}
 
-      <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        
-        <input 
-          type="email" 
-          placeholder="Email Address" 
-          value={email} 
-          onChange={(e) => setEmail(e.target.value)} 
-          required 
-          style={{ padding: '10px', fontSize: '16px', borderRadius: '4px', border: '1px solid #ccc' }}
-        />
-        
-        <input 
-          type="password" 
-          placeholder="Password" 
-          value={password} 
-          onChange={(e) => setPassword(e.target.value)} 
-          required 
-          style={{ padding: '10px', fontSize: '16px', borderRadius: '4px', border: '1px solid #ccc' }}
-        />
-        
-        <button type="submit" style={{ padding: '12px', fontSize: '16px', background: '#007BFF', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
-          Login
-        </button>
-
-      </form>
-    </div>
-  );
+            <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '15px' }}>
+                <input 
+                    type="email" 
+                    placeholder="Email Address" 
+                    value={userEmail} 
+                    onChange={(e) => setUserEmail(e.target.value)} 
+                    required 
+                    style={{ padding: '10px' }}
+                />
+                
+                <input 
+                    type="password" 
+                    placeholder="Password" 
+                    value={userPass} 
+                    onChange={(e) => setUserPass(e.target.value)} 
+                    required 
+                    style={{ padding: '10px' }}
+                />
+                
+                <button type="submit" style={{ padding: '10px', background: 'blue', color: 'white', border: 'none', cursor: 'pointer' }}>
+                    Log In
+                </button>
+            </form>
+        </div>
+    );
 }
 
 export default Login;

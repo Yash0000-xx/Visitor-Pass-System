@@ -1,66 +1,76 @@
-
 const express = require('express');
-const Appointment = require('../models/Appointment');
-const nodemailer = require('nodemailer');
+const Appointment = require('../models/appointment');
+const axios = require('axios');
 const router = express.Router();
 
 router.post('/request', async (req, res) => {
+    let reqData = req.body;
+
+    if (!reqData.visitorId || !reqData.hostId || !reqData.date || !reqData.time) {
+        return res.status(400).json({ error: "Please provide all required appointment details" });
+    }
+
     try {
-        const { visitorId, hostId, date, time } = req.body;
-        const newAppointment = new Appointment({ visitorId, hostId, date, time });
-        await newAppointment.save();
-        res.status(201).json({ message: 'Appointment requested successfully!', appointment: newAppointment });
-    } catch (error) {
-        res.status(500).json({ message: 'Error requesting appointment', error: error.message });
+        let newAppt = new Appointment({
+            visitorId: reqData.visitorId,
+            hostId: reqData.hostId,
+            date: reqData.date,
+            time: reqData.time
+        });
+        
+        await newAppt.save();
+        
+        res.status(201).json({ msg: "Appointment requested successfully", appointment: newAppt });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ error: "Could not save the appointment" });
     }
 });
 
-
 router.put('/status/:id', async (req, res) => {
-    try {
-        const { status } = req.body; 
+    let newStatus = req.body.status;
 
-     
-        const appointment = await Appointment.findByIdAndUpdate(
+    if (!newStatus) {
+        return res.status(400).json({ error: "No status provided to update" });
+    }
+
+    try {
+        let appt = await Appointment.findByIdAndUpdate(
             req.params.id, 
-            { status: status }, 
+            { status: newStatus }, 
             { new: true }
         ).populate('visitorId');
 
-        if (!appointment) {
-            return res.status(404).json({ message: 'Appointment not found' });
+        if (!appt) {
+            return res.status(404).json({ error: "Appointment not found in database" });
         }
 
-       
-        if (status === 'Approved') {
+        if (newStatus === 'Approved' && appt.visitorId && appt.visitorId.email) {
             try {
-          
-                let testAccount = await nodemailer.createTestAccount();
-                let transporter = nodemailer.createTransport({
-                    host: "smtp.ethereal.email",
-                    port: 587,
-                    secure: false,
-                    auth: { user: testAccount.user, pass: testAccount.pass }
-                });
+                let mailConfig = {
+                    service_id: process.env.EMAILJS_SERVICE_ID,
+                    template_id: process.env.EMAILJS_TEMPLATE_ID,
+                    user_id: process.env.EMAILJS_PUBLIC_KEY,
+                    accessToken: process.env.EMAILJS_PRIVATE_KEY,
+                    template_params: {
+                        to_email: appt.visitorId.email,
+                        subject: "Appointment Approved",
+                        message: "Your visitor appointment has been officially approved. Please proceed to the front desk when you arrive."
+                    }
+                };
 
-                let info = await transporter.sendMail({
-                    from: '"Security Desk" <security@office.com>',
-                    to: appointment.visitorId.email,
-                    subject: "Your Visitor Pass is Approved",
-                    text: `Hello ${appointment.visitorId.name},\n\nYour appointment has been approved. Please collect your digital pass at the front desk.\n\nThank you.`,
-                });
-
-                console.log("Email Notification sent! Preview URL: %s", nodemailer.getTestMessageUrl(info));
-            } catch (emailError) {
-                console.error("Email failed to send, but appointment was approved.", emailError);
+                await axios.post('https://api.emailjs.com/api/v1.0/email/send', mailConfig);
+                console.log("Live email sent to visitor");
+            } catch (emailErr) {
+                console.log(emailErr);
             }
         }
-       
 
-        res.status(200).json({ message: `Appointment ${status}!`, appointment });
+        res.status(200).json({ msg: "Appointment updated", data: appt });
 
-    } catch (error) {
-        res.status(500).json({ message: 'Error updating status', error: error.message });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ error: "Server crashed while updating status" });
     }
 });
 

@@ -2,122 +2,187 @@ const express = require('express');
 const router = express.Router();
 const Visitor = require('../models/Visitor');
 const User = require('../models/User');
-const { verifyToken, checkRole } = require('../middleware/auth');
+const axios = require('axios');
 const upload = require('../middleware/upload');
-const sendEmail = require('../utils/sendEmail'); 
+const { verifyToken, checkRole } = require('../middleware/auth');
 
 router.post('/register', upload.single('photo'), async (req, res) => {
+    let reqBody = req.body;
+
+    if (!reqBody.name || !reqBody.email || !reqBody.phone || !reqBody.purposeOfVisit) {
+        return res.status(400).json({ error: "Missing required form data" });
+    }
+
+    if (reqBody.phone.length !== 10) {
+        return res.status(400).json({ error: "Phone number must be 10 digits" });
+    }
+
+    if (!reqBody.email.includes('@')) {
+        return res.status(400).json({ error: "Invalid email format" });
+    }
+
+    let generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    
+    let picturePath = "";
+    if (req.file) {
+        picturePath = '/uploads/' + req.file.filename;
+    }
+
     try {
-        const { name, email, phone, purposeOfVisit, hostId } = req.body;
-        
-        if (!req.file) {
-            return res.status(400).json({ message: 'A visitor photo is strictly required.' });
-        }
-        
-        const photoUrl = `/uploads/${req.file.filename}`;
-
-        if (!name || !email || !phone || !purposeOfVisit || !hostId) {
-            return res.status(400).json({ message: 'All required fields must be filled.' });
-        }
-
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-        const newVisitor = new Visitor({ 
-            name, email, phone, photoUrl, purposeOfVisit, hostId,
-            otp: otp, 
-            status: 'Pending' 
+        let newVis = new Visitor({
+            name: reqBody.name,
+            email: reqBody.email,
+            phone: reqBody.phone,
+            photoUrl: picturePath,
+            purposeOfVisit: reqBody.purposeOfVisit,
+            hostId: reqBody.hostId,
+            otp: generatedOtp,
+            status: 'Pending',
+            isAppointment: reqBody.isAppointment || false,
+            appointmentDate: reqBody.appointmentDate || null
         });
 
-        await newVisitor.save();
-        
-        await sendEmail(email, "Visitor Registration OTP", `Your verification code is: ${otp}`);
+        await newVis.save();
 
-        res.status(201).json({ message: 'Visitor registered! Please check email for OTP.', visitorId: newVisitor._id });
+        let mailPayload = {
+            service_id: process.env.EMAILJS_SERVICE_ID,
+            template_id: process.env.EMAILJS_TEMPLATE_ID,
+            user_id: process.env.EMAILJS_PUBLIC_KEY,
+            accessToken: process.env.EMAILJS_PRIVATE_KEY,
+            template_params: {
+                to_email: reqBody.email,
+                subject: "Visitor Verification Code",
+                message: generatedOtp
+            }
+        };
 
-    } catch (error) {
-        res.status(500).json({ message: 'Error registering visitor', error: error.message });
+        await axios.post('https://api.emailjs.com/api/v1.0/email/send', mailPayload);
+
+        res.status(201).json({ 
+            msg: "Registration successful. Check email for code.", 
+            id: newVis._id 
+        });
+
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ error: "Database or email failure" });
     }
 });
-
 
 router.post('/verify-otp', async (req, res) => {
+    let inputEmail = req.body.email;
+    let inputOtp = req.body.otp;
+
+    if (!inputEmail || !inputOtp) {
+        return res.status(400).json({ error: "Missing email or OTP" });
+    }
+
     try {
-        const { email, otp } = req.body;
-        const visitor = await Visitor.findOne({ email });
+        let foundVis = await Visitor.findOne({ email: inputEmail }).sort({ createdAt: -1 });
 
-        // Safety check in case the email doesn't exist
-        if (!visitor) {
-            return res.status(404).json({ message: 'Visitor not found.' });
+        if (!foundVis) {
+            return res.status(404).json({ error: "No visitor found" });
         }
 
-        // FIXED: Added the opening bracket '{' that was missing here
-        if (String(visitor.otp) !== String(req.body.otp)) {
-            return res.status(400).json({ message: 'Invalid OTP.' });
+        if (foundVis.otp !== inputOtp) {
+            return res.status(400).json({ error: "Wrong OTP" });
         }
 
-        visitor.status = 'Approved';
-        visitor.otp = null; 
-        await visitor.save();
+        foundVis.status = 'Approved';
+        foundVis.otp = null;
+        await foundVis.save();
 
-        res.json({ message: 'OTP Verified! Visitor Approved.' });
-    } catch (error) {
-        // Added error logging so we can see if anything else breaks
-        console.error("Verification Error:", error);
-        res.status(500).json({ message: 'Server error during verification.', error: error.message });
+        res.json({ msg: "Verified and approved!" });
+
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ error: "Server crashed" });
     }
 });
 
+router.get('/appointments', async (req, res) => {
+    try {
+        let pendingApps = await Visitor.find({ 
+            isAppointment: true, 
+            status: 'Pending' 
+        }).populate('hostId', 'name email');
+        
+        res.json(pendingApps);
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ error: "Failed to get appointments" });
+    }
+});
 
 router.get('/', verifyToken, checkRole(['Admin', 'Security']), async (req, res) => {
     try {
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const skip = (page - 1) * limit;
+        let pageNum = parseInt(req.query.page) || 1;
+        let limitNum = parseInt(req.query.limit) || 10;
+        let skipNum = (pageNum - 1) * limitNum;
 
-        const visitors = await Visitor.find()
+        let allVisitors = await Visitor.find()
             .populate('hostId', 'name email')
-            .skip(skip)
-            .limit(limit)
+            .skip(skipNum)
+            .limit(limitNum)
             .sort({ createdAt: -1 });
 
-        const total = await Visitor.countDocuments();
+        let totalCount = await Visitor.countDocuments();
 
         res.status(200).json({
-            visitors,
-            currentPage: page,
-            totalPages: Math.ceil(total / limit),
-            totalVisitors: total
+            visitors: allVisitors,
+            currentPage: pageNum,
+            totalPages: Math.ceil(totalCount / limitNum),
+            totalVisitors: totalCount
         });
-    } catch (error) {
-        res.status(500).json({ message: 'Server Error', error: error.message });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ error: "Failed to load visitors" });
     }
 });
 
 router.get('/employees', async (req, res) => {
     try {
-        const employees = await User.find({ role: 'Employee' }).select('name _id');
-        res.json(employees);
-    } catch (error) {
-        res.status(500).json({ message: 'Error fetching employees' });
+        let empList = await User.find({ role: 'Employee' }).select('name _id');
+        res.json(empList);
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ error: "Could not fetch employee list" });
     }
 });
 
 router.put('/:id/status', verifyToken, checkRole(['Employee', 'Admin']), async (req, res) => {
+    let updateStatus = req.body.status;
+
     try {
-        const { status } = req.body;
-        const visitor = await Visitor.findByIdAndUpdate(
+        let updatedVis = await Visitor.findByIdAndUpdate(
             req.params.id, 
-            { status }, 
+            { status: updateStatus }, 
             { new: true }
         );
 
-        if (status === 'Approved') {
-            await sendEmail(visitor.email, "Visit Approved", `Hello ${visitor.name}, your visit has been approved!`);
+        if (updateStatus === 'Approved') {
+            try {
+                let mailPayload = {
+                    service_id: process.env.EMAILJS_SERVICE_ID,
+                    template_id: process.env.EMAILJS_TEMPLATE_ID,
+                    user_id: process.env.EMAILJS_PUBLIC_KEY,
+                    accessToken: process.env.EMAILJS_PRIVATE_KEY,
+                    template_params: {
+                        to_email: updatedVis.email,
+                        subject: "Visit Approved",
+                        message: "Your visit has been approved!"
+                    }
+                };
+                await axios.post('https://api.emailjs.com/api/v1.0/email/send', mailPayload);
+            } catch (mailErr) {
+                console.log("Email failed but status updated");
+            }
         }
 
-        res.json({ message: `Pass ${status.toLowerCase()}!`, visitor });
-    } catch (error) {
-        res.status(500).json({ message: 'Error updating status' });
+        res.json({ msg: "Status updated to " + updateStatus, visitor: updatedVis });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ error: "Failed to update visitor status" });
     }
 });
 

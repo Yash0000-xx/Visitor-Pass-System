@@ -1,27 +1,32 @@
 const twilio = require('twilio');
 
-const sendSMS = async (toPhone, messageBody) => {
-    try {
-        if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
-            console.log(`\n--- MOCK SMS NOTIFICATION ---`);
-            console.log(`To: ${toPhone}`);
-            console.log(`Message: ${messageBody}`);
-            console.log(`-----------------------------\n`);
-            return true;
-        }
+async function sendSMS(targetPhone, textMessage) {
+    let mySid = process.env.TWILIO_ACCOUNT_SID;
+    let myToken = process.env.TWILIO_AUTH_TOKEN;
+    let twilioNumber = process.env.TWILIO_PHONE_NUMBER;
 
-        const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-        await client.messages.create({
-            body: messageBody,
-            from: process.env.TWILIO_PHONE_NUMBER,
-            to: toPhone
-        });
-        
-        return true;
-    } catch (error) {
-        console.error('Error sending SMS:', error.message);
+    if (!mySid || !myToken) {
+        console.log("Cannot send SMS: Missing Twilio keys in environment variables");
         return false;
     }
-};
+
+    try {
+        let myClient = twilio(mySid, myToken);
+
+        await myClient.messages.create({
+            body: textMessage,
+            from: twilioNumber,
+            to: targetPhone
+        });
+        
+        console.log("Text message sent successfully to " + targetPhone);
+        return true;
+
+    } catch (err) {
+        console.log("Failed to send text message");
+        console.log(err);
+        return false;
+    }
+}
 
 module.exports = sendSMS;

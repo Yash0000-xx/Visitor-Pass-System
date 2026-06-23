@@ -1,65 +1,89 @@
 const express = require('express');
-const bcrypt = require('bcryptjs'); 
-const jwt = require('jsonwebtoken'); 
-const User = require('../models/User'); 
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
 const router = express.Router();
 
 router.post('/register', async (req, res) => {
-    try {
-        const { name, email, password, role } = req.body;
+    let reqData = req.body;
 
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ message: 'User already exists with this email' });
+    if (!reqData.email || !reqData.password || !reqData.name) {
+        return res.status(400).json({ error: "Please fill out all required fields" });
+    }
+
+    try {
+        let checkUser = await User.findOne({ email: reqData.email });
+        
+        if (checkUser) {
+            return res.status(400).json({ error: "That email is already registered" });
         }
 
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
+        let mySalt = await bcrypt.genSalt(10);
+        let securePassword = await bcrypt.hash(reqData.password, mySalt);
 
-        const newUser = new User({
-            name,
-            email,
-            password: hashedPassword,
-            role: role || 'Employee' 
+        let chosenRole = reqData.role;
+        if (!chosenRole) {
+            chosenRole = 'Employee';
+        }
+
+        let newUserObj = new User({
+            name: reqData.name,
+            email: reqData.email,
+            password: securePassword,
+            role: chosenRole
         });
 
-        await newUser.save();
-        res.status(201).json({ message: 'User registered successfully!' });
+        await newUserObj.save();
+        res.status(201).json({ msg: "Account created successfully" });
 
-    } catch (error) {
-        res.status(500).json({ message: 'Server Error', error: error.message });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ error: "Something went wrong during registration" });
     }
 });
 
 router.post('/login', async (req, res) => {
+    let emailInput = req.body.email;
+    let passInput = req.body.password;
+
+    if (!emailInput || !passInput) {
+        return res.status(400).json({ error: "Email and password are required to login" });
+    }
+
     try {
-        const { email, password } = req.body;
-
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ message: 'Invalid credentials' });
+        let foundUser = await User.findOne({ email: emailInput });
+        
+        if (!foundUser) {
+            return res.status(400).json({ error: "Wrong email or password" });
         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
-        if (!isMatch) {
-            return res.status(400).json({ message: 'Invalid credentials' });
+        let passMatch = await bcrypt.compare(passInput, foundUser.password);
+        
+        if (!passMatch) {
+            return res.status(400).json({ error: "Wrong email or password" });
         }
 
-        const token = jwt.sign(
-            { id: user._id, role: user.role }, 
-            process.env.JWT_SECRET, 
-            { expiresIn: '1d' }
-        );
+        let payload = {
+            id: foundUser._id,
+            role: foundUser.role
+        };
+
+        let myToken = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
 
         res.status(200).json({
-            message: 'Login successful',
-            token,
-            user: { id: user._id, name: user.name, role: user.role }
+            msg: "Logged in successfully",
+            token: myToken,
+            userData: {
+                id: foundUser._id,
+                name: foundUser.name,
+                role: foundUser.role
+            }
         });
 
-    } catch (error) {
-        res.status(500).json({ message: 'Server Error', error: error.message });
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ error: "Server error during login" });
     }
 });
 

@@ -2,29 +2,43 @@ const jwt = require('jsonwebtoken');
 
 const verifyToken = (req, res, next) => {
     try {
-        let token = req.header('Authorization');
+        let authHeader = req.header('Authorization');
 
-        if (!token) {
-            return res.status(403).json({ message: 'Access denied' });
+        if (!authHeader) {
+            return res.status(403).json({ error: "No token provided, access denied" });
         }
 
-        if (token.startsWith('Bearer ')) {
-            token = token.slice(7, token.length).trimLeft();
+        let actualToken = authHeader;
+        
+        if (authHeader.includes('Bearer')) {
+            actualToken = authHeader.split(' ')[1];
         }
 
-        const verified = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = verified;
+        let decodedData = jwt.verify(actualToken, process.env.JWT_SECRET);
+        
+        req.user = decodedData;
+        
         next();
-    } catch (error) {
-        res.status(401).json({ message: 'Invalid token' });
+    } catch (err) {
+        console.log(err);
+        res.status(401).json({ error: "Token is invalid or expired" });
     }
 };
 
-const checkRole = (roles) => {
+const checkRole = (allowedRoles) => {
     return (req, res, next) => {
-        if (!req.user || !roles.includes(req.user.role)) {
-            return res.status(403).json({ message: 'Unauthorized: You do not have permission' });
+        let currentUser = req.user;
+
+        if (!currentUser) {
+            return res.status(403).json({ error: "User not found in request" });
         }
+
+        let hasPermission = allowedRoles.includes(currentUser.role);
+
+        if (!hasPermission) {
+            return res.status(403).json({ error: "You don't have the right permissions for this" });
+        }
+
         next();
     };
 };

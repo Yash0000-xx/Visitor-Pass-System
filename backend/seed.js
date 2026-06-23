@@ -1,61 +1,41 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const User = require('./models/user');
 require('dotenv').config();
-const User = require('./models/User');
-const Visitor = require('./models/Visitor'); 
 
-const seedDatabase = async () => {
+mongoose.connect(process.env.MONGO_URI);
+
+async function seedDB() {
     try {
-        await mongoose.connect(process.env.MONGO_URI);
-        console.log('Connected to Database...');
-
-        await User.deleteMany();
-        await Visitor.deleteMany(); 
-        console.log('Cleared old data...');
-
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash('password123', salt);
-
-        const users = [
-            { name: 'System Admin', email: 'admin@office.com', password: hashedPassword, role: 'Admin' },
-            { name: 'Front Desk Security', email: 'security@office.com', password: hashedPassword, role: 'Security' },
-            { name: 'Ramesh (HR Employee)', email: 'ramesh@office.com', password: hashedPassword, role: 'Employee' }
-        ];
-
-        const createdUsers = await User.insertMany(users);
-        console.log('Demo Users seeded!');
-
+        await User.deleteMany({});
         
-        const employee = createdUsers.find(u => u.role === 'Employee');
+        let mySalt = await bcrypt.genSalt(10);
+        let securePass = await bcrypt.hash("password123", mySalt);
 
-        const visitors = [
-            {
-                name: 'Rahul Sharma',
-                email: 'rahul@test.com',
-                phone: '9876543210',
-                purposeOfVisit: 'Job Interview',
-                hostId: employee._id,
-                status: 'Approved' 
-            },
-            {
-                name: 'Priya Patel',
-                email: 'priya@test.com',
-                phone: '8765432109',
-                purposeOfVisit: 'Vendor Meeting',
-                hostId: employee._id,
-                status: 'Pending' 
-            }
-        ];
+        let myAdmin = new User({
+            name: "Admin Person",
+            email: "admin@test.com",
+            password: securePass,
+            role: "Admin"
+        });
+        
+        let myEmployee = new User({
+            name: "John Employee",
+            email: "john@test.com",
+            password: securePass,
+            role: "Employee"
+        });
 
-        await Visitor.insertMany(visitors);
-        console.log('Demo Visitors & Passes successfully seeded!');
-        console.log('Login with: admin@office.com | Password: password123');
-
-        process.exit();
-    } catch (error) {
-        console.error('Seeding failed:', error);
+        await myAdmin.save();
+        await myEmployee.save();
+        
+        console.log("Dummy users added to the database");
+        process.exit(0);
+    } catch (err) {
+        console.log("Seeding failed");
+        console.log(err);
         process.exit(1);
     }
-};
+}
 
-seedDatabase();
+seedDB();

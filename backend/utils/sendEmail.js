@@ -1,27 +1,28 @@
 const axios = require('axios');
 
-const sendEmail = async (to, subject, text) => {
-    console.log("--> [EMAIL] Bypassing SMTP. Sending via EmailJS API...");
+async function sendEmail(targetEmail, mailSubject, mailBody) {
+    console.log("Attempting to send email to: " + targetEmail);
 
-    const data = {
+    let emailPayload = {
         service_id: process.env.EMAILJS_SERVICE_ID,
         template_id: process.env.EMAILJS_TEMPLATE_ID,
         user_id: process.env.EMAILJS_PUBLIC_KEY,
         accessToken: process.env.EMAILJS_PRIVATE_KEY,
         template_params: {
-            to_email: to,
-            subject: subject,
-            message: text
+            to_email: targetEmail,
+            subject: mailSubject,
+            message: mailBody
         }
     };
 
     try {
-        await axios.post('https://api.emailjs.com/api/v1.0/email/send', data);
-        console.log("--> [EMAIL] Success! Sent via EmailJS API.");
-    } catch (error) {
-        console.error("--> [EMAIL] FAILED:", error.response?.data || error.message);
-        throw new Error('EmailJS failed to send');
+        await axios.post('https://api.emailjs.com/api/v1.0/email/send', emailPayload);
+        console.log("Email sent successfully!");
+    } catch (err) {
+        console.log("Email failed to send");
+        console.log(err);
+        throw new Error("Could not send email via EmailJS");
     }
-};
+}
 
 module.exports = sendEmail;

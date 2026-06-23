@@ -2,122 +2,200 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 
 function RegisterVisitor() {
-  const [formData, setFormData] = useState({
-    name: '', email: '', phone: '', purposeOfVisit: '', hostId: ''
-  });
-  const [photo, setPhoto] = useState(null);
-  const [employees, setEmployees] = useState([]);
-  const [message, setMessage] = useState('');
+    const [visitorInput, setVisitorInput] = useState({
+        name: '',
+        email: '',
+        phone: '',
+        purposeOfVisit: '',
+        hostId: ''
+    });
 
-  useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        const res = await axios.get('https://visitor-pass-backend-qhoo.onrender.com/api/visitors/employees');
-        setEmployees(res.data);
-      } catch (err) {
-        console.error('Could not load employees');
-      }
+    const [capturedPhoto, setCapturedPhoto] = useState(null);
+    const [empList, setEmpList] = useState([]);
+    const [statusAlert, setStatusAlert] = useState('');
+
+    useEffect(() => {
+        const getEmployees = async () => {
+            try {
+                let apiLink = import.meta.env.VITE_API_URL + '/api/visitors/employees';
+                let res = await axios.get(apiLink);
+                setEmpList(res.data);
+            } catch (err) {
+                console.log('Failed to fetch the employee list');
+            }
+        };
+        getEmployees();
+    }, []);
+
+    const submitRegistration = async (e) => {
+        e.preventDefault();
+        
+        let emailCheck = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        let phoneCheck = /^[0-9]{10}$/;
+
+        if (!emailCheck.test(visitorInput.email)) {
+            setStatusAlert('Error: Invalid email format.');
+            return;
+        }
+        if (!phoneCheck.test(visitorInput.phone)) {
+            setStatusAlert('Error: Phone must be exactly 10 digits.');
+            return;
+        }
+
+        setStatusAlert('Sending data to server...');
+
+        let formDataBundle = new FormData();
+        formDataBundle.append('name', visitorInput.name);
+        formDataBundle.append('email', visitorInput.email);
+        formDataBundle.append('phone', visitorInput.phone);
+        formDataBundle.append('purposeOfVisit', visitorInput.purposeOfVisit);
+        formDataBundle.append('hostId', visitorInput.hostId);
+        
+        if (capturedPhoto) {
+            formDataBundle.append('photo', capturedPhoto);
+        }
+
+        try {
+            let registerLink = import.meta.env.VITE_API_URL + '/api/visitors/register';
+            
+            await axios.post(registerLink, formDataBundle, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            
+            setStatusAlert('Success! Registration complete.');
+            
+            setVisitorInput({ 
+                name: '', 
+                email: '', 
+                phone: '', 
+                purposeOfVisit: '', 
+                hostId: '' 
+            });
+            setCapturedPhoto(null);
+
+        } catch (err) {
+            console.log(err);
+            if (err.response && err.response.data && err.response.data.error) {
+                setStatusAlert('Error: ' + err.response.data.error);
+            } else {
+                setStatusAlert('Error: Something went wrong while saving.');
+            }
+        }
     };
-    fetchEmployees();
-  }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneRegex = /^[0-9]{10}$/;
+    const handleTyping = (e) => {
+        setVisitorInput({ 
+            ...visitorInput, 
+            [e.target.name]: e.target.value 
+        });
+    };
 
-    if (!emailRegex.test(formData.email)) {
-        setMessage('Error: Please enter a valid email address.');
-        return;
-    }
-    if (!phoneRegex.test(formData.phone)) {
-        setMessage('Error: Phone number must be exactly 10 digits.');
-        return;
-    }
+    const goToOtpPage = () => {
+        window.location.href = '/verify-otp';
+    };
 
-    setMessage('Registering...');
-
-    const data = new FormData();
-    data.append('name', formData.name);
-    data.append('email', formData.email);
-    data.append('phone', formData.phone);
-    data.append('purposeOfVisit', formData.purposeOfVisit);
-    data.append('hostId', formData.hostId);
-    if (photo) data.append('photo', photo);
-
-    try {
-      await axios.post('https://visitor-pass-backend-qhoo.onrender.com/api/visitors/register', data, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setMessage('Visitor registered! Awaiting approval.');
-      
-      setFormData({ name: '', email: '', phone: '', purposeOfVisit: '', hostId: '' });
-      setPhoto(null);
-    } catch (error) {
-      setMessage(error.response?.data?.message || 'Error: Registration failed.');
-    }
-  };
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  return (
-    <div style={{ maxWidth: '500px', margin: '50px auto', padding: '20px', background: 'white', borderRadius: '8px', boxShadow: '0 4px 8px rgba(0,0,0,0.1)' }}>
-      <h2 style={{ textAlign: 'center', marginBottom: '20px' }}>Visitor Registration</h2>
-      
-      {/* UPDATED MESSAGE AND BUTTON BLOCK */}
-      {message && (
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-            <p style={{ fontWeight: 'bold', color: message.startsWith('Error') ? 'red' : 'green' }}>
-                {message}
-            </p>
-            {message.includes('registered') && (
-                <button 
-                    type="button" 
-                    onClick={() => window.location.href = '/verify-otp'}
-                    style={{
-                        marginTop: '10px',
-                        padding: '10px 20px',
-                        backgroundColor: '#007bff',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '5px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold'
-                    }}
-                >
-                    Proceed to Verify OTP
-                </button>
+    return (
+        <div style={{ maxWidth: '500px', margin: '40px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '5px' }}>
+            <h2 style={{ textAlign: 'center' }}>New Visitor Registration</h2>
+            
+            {statusAlert && (
+                <div style={{ textAlign: 'center', marginBottom: '15px' }}>
+                    <p style={{ fontWeight: 'bold', color: statusAlert.includes('Error') ? 'red' : 'green' }}>
+                        {statusAlert}
+                    </p>
+                    
+                    {statusAlert.includes('Success') && (
+                        <button 
+                            type="button" 
+                            onClick={goToOtpPage}
+                            style={{
+                                marginTop: '10px',
+                                padding: '10px 15px',
+                                backgroundColor: 'blue',
+                                color: 'white',
+                                border: 'none',
+                                cursor: 'pointer'
+                            }}
+                        >
+                            Proceed to OTP Verification
+                        </button>
+                    )}
+                </div>
             )}
-        </div>
-      )}
-      
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-        <input name="name" type="text" placeholder="Full Name" required value={formData.name} onChange={handleChange} style={{ padding: '10px' }} />
-        <input name="email" type="email" placeholder="Email Address" required value={formData.email} onChange={handleChange} style={{ padding: '10px' }} />
-        <input name="phone" type="text" placeholder="Phone Number" required value={formData.phone} onChange={handleChange} style={{ padding: '10px' }} />
-        <input name="purposeOfVisit" type="text" placeholder="Purpose of Visit" required value={formData.purposeOfVisit} onChange={handleChange} style={{ padding: '10px' }} />
-        
-        <select name="hostId" required value={formData.hostId} onChange={handleChange} style={{ padding: '10px' }}>
-          <option value="" disabled>Select Employee to Visit</option>
-          {employees.map(emp => (
-            <option key={emp._id} value={emp._id}>{emp.name}</option>
-          ))}
-        </select>
-        
-        <div style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '5px' }}>
-          <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Visitor Photo (Required)</label>
-          <input type="file" accept="image/*" required onChange={(e) => setPhoto(e.target.files[0])} />
-        </div>
+            
+            <form onSubmit={submitRegistration} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <input 
+                    name="name" 
+                    type="text" 
+                    placeholder="Full Name" 
+                    required 
+                    value={visitorInput.name} 
+                    onChange={handleTyping} 
+                    style={{ padding: '8px' }} 
+                />
+                
+                <input 
+                    name="email" 
+                    type="email" 
+                    placeholder="Email Address" 
+                    required 
+                    value={visitorInput.email} 
+                    onChange={handleTyping} 
+                    style={{ padding: '8px' }} 
+                />
+                
+                <input 
+                    name="phone" 
+                    type="text" 
+                    placeholder="Phone Number" 
+                    required 
+                    value={visitorInput.phone} 
+                    onChange={handleTyping} 
+                    style={{ padding: '8px' }} 
+                />
+                
+                <input 
+                    name="purposeOfVisit" 
+                    type="text" 
+                    placeholder="Why are you visiting?" 
+                    required 
+                    value={visitorInput.purposeOfVisit} 
+                    onChange={handleTyping} 
+                    style={{ padding: '8px' }} 
+                />
+                
+                <select 
+                    name="hostId" 
+                    required 
+                    value={visitorInput.hostId} 
+                    onChange={handleTyping} 
+                    style={{ padding: '8px' }}
+                >
+                    <option value="" disabled>Select the Employee</option>
+                    {empList.map(emp => (
+                        <option key={emp._id} value={emp._id}>{emp.name}</option>
+                    ))}
+                </select>
+                
+                <div style={{ padding: '10px', border: '1px dotted #888', marginTop: '5px' }}>
+                    <label style={{ display: 'block', marginBottom: '5px' }}>Upload Photo</label>
+                    <input 
+                        type="file" 
+                        accept="image/*" 
+                        required 
+                        onChange={(e) => setCapturedPhoto(e.target.files[0])} 
+                    />
+                </div>
 
-        <button type="submit" style={{ padding: '12px', background: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}>
-          Register Visitor
-        </button>
-      </form>
-    </div>
-  );
+                <button 
+                    type="submit" 
+                    style={{ padding: '10px', marginTop: '10px', background: 'green', color: 'white', border: 'none', cursor: 'pointer' }}
+                >
+                    Submit Registration
+                </button>
+            </form>
+        </div>
+    );
 }
 
 export default RegisterVisitor;

@@ -2,107 +2,115 @@ import { useState } from 'react';
 import axios from 'axios';
 
 function IssuePass() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    purposeOfVisit: ''
-  });
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setMessage('');
-    setError('');
-
-    try {
-   
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        setError('You must be logged in to issue a pass.');
-        return;
-      }
-
+    const [passInfo, setPassInfo] = useState({
+        name: '',
+        email: '',
+        phone: '',
+        purposeOfVisit: ''
+    });
     
-      const response = await axios.post(
-        'https://visitor-pass-backend-qhoo.onrender.com/api/passes/issue', 
-        formData,
-        {
-          headers: { Authorization: `Bearer ${token}` }
+    const [successMsg, setSuccessMsg] = useState('');
+    const [failMsg, setFailMsg] = useState('');
+
+    const handleInput = (e) => {
+        setPassInfo({
+            ...passInfo,
+            [e.target.name]: e.target.value
+        });
+    };
+
+    const submitPassForm = async (e) => {
+        e.preventDefault();
+        setSuccessMsg('');
+        setFailMsg('');
+
+        try {
+            let myToken = localStorage.getItem('token');
+            
+            if (!myToken) {
+                setFailMsg('You need to log in first.');
+                return;
+            }
+
+            let apiUrl = import.meta.env.VITE_API_URL + '/api/passes/issue';
+            
+            await axios.post(apiUrl, passInfo, {
+                headers: { Authorization: 'Bearer ' + myToken }
+            });
+
+            setSuccessMsg('Pass created successfully!');
+            
+            setPassInfo({ 
+                name: '', 
+                email: '', 
+                phone: '', 
+                purposeOfVisit: '' 
+            });
+
+        } catch (err) {
+            console.log(err);
+            if (err.response && err.response.data && err.response.data.error) {
+                setFailMsg(err.response.data.error);
+            } else {
+                setFailMsg('Could not issue the pass.');
+            }
         }
-      );
+    };
 
-      setMessage('Pass issued successfully!');
-      
-   
-      setFormData({ name: '', email: '', phone: '', purposeOfVisit: '' });
+    return (
+        <div style={{ maxWidth: '500px', margin: '40px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '5px' }}>
+            <h2>Issue Walk-in Pass</h2>
+            
+            {successMsg && <p style={{ color: 'green', fontWeight: 'bold' }}>{successMsg}</p>}
+            {failMsg && <p style={{ color: 'red', fontWeight: 'bold' }}>{failMsg}</p>}
 
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to issue pass.');
-    }
-  };
+            <form onSubmit={submitPassForm} style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '15px' }}>
+                <input 
+                    type="text" 
+                    name="name" 
+                    placeholder="Full Name" 
+                    value={passInfo.name} 
+                    onChange={handleInput} 
+                    required 
+                    style={{ padding: '8px' }}
+                />
+                
+                <input 
+                    type="email" 
+                    name="email" 
+                    placeholder="Email Address" 
+                    value={passInfo.email} 
+                    onChange={handleInput} 
+                    required 
+                    style={{ padding: '8px' }}
+                />
+                
+                <input 
+                    type="text" 
+                    name="phone" 
+                    placeholder="Phone Number" 
+                    value={passInfo.phone} 
+                    onChange={handleInput} 
+                    required 
+                    style={{ padding: '8px' }}
+                />
+                
+                <input 
+                    type="text" 
+                    name="purposeOfVisit" 
+                    placeholder="Why are they visiting?" 
+                    value={passInfo.purposeOfVisit} 
+                    onChange={handleInput} 
+                    required 
+                    style={{ padding: '8px' }}
+                />
 
-  return (
-    <div style={{ maxWidth: '500px', margin: '40px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px', backgroundColor: '#fff' }}>
-      <h2>Issue New Visitor Pass</h2>
-      
-      {message && <p style={{ color: 'green', fontWeight: 'bold' }}>{message}</p>}
-      {error && <p style={{ color: 'red', fontWeight: 'bold' }}>{error}</p>}
-
-      <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '15px', marginTop: '20px' }}>
-        
-        <input 
-          type="text" 
-          name="name" 
-          placeholder="Visitor Name" 
-          value={formData.name} 
-          onChange={handleChange} 
-          required 
-          style={{ padding: '10px' }}
-        />
-        
-        <input 
-          type="email" 
-          name="email" 
-          placeholder="Visitor Email" 
-          value={formData.email} 
-          onChange={handleChange} 
-          required 
-          style={{ padding: '10px' }}
-        />
-        
-        <input 
-          type="text" 
-          name="phone" 
-          placeholder="Phone Number" 
-          value={formData.phone} 
-          onChange={handleChange} 
-          required 
-          style={{ padding: '10px' }}
-        />
-        
-        <input 
-          type="text" 
-          name="purposeOfVisit" 
-          placeholder="Purpose of Visit" 
-          value={formData.purposeOfVisit} 
-          onChange={handleChange} 
-          required 
-          style={{ padding: '10px' }}
-        />
-
-        <button type="submit" style={{ padding: '12px', backgroundColor: '#28a745', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-          Issue Pass
-        </button>
-      </form>
-    </div>
-  );
+                <button type="submit" style={{ padding: '10px', marginTop: '10px', backgroundColor: 'green', color: 'white', border: 'none', cursor: 'pointer' }}>
+                    Create Pass
+                </button>
+            </form>
+        </div>
+    );
 }
 
 export default IssuePass;
