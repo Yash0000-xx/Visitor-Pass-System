@@ -14,11 +14,28 @@ const customStorage = multer.diskStorage({
     },
     filename: function(req, file, cb) {
         let fileExt = path.extname(file.originalname);
-        let newName = 'file-' + Date.now() + fileExt;
+        let newName = 'visitor-photo-' + Date.now() + fileExt;
         cb(null, newName);
     }
 });
 
-const upload = multer({ storage: customStorage });
+  const imageFilter = (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png/;
+    const isValidExt = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const isValidMime = allowedTypes.test(file.mimetype);
+
+    if (isValidExt && isValidMime) {
+        return cb(null, true);
+    } else {
+        cb(new Error('Security Error: Only JPG and PNG image files are allowed!'), false);
+    }
+};
+
+
+const upload = multer({ 
+    storage: customStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, 
+    fileFilter: imageFilter
+});
 
 module.exports = upload;
